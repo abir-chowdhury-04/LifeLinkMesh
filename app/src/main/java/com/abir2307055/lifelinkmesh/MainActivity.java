@@ -1,5 +1,11 @@
 package com.abir2307055.lifelinkmesh;
 
+
+import com.abir2307055.lifelinkmesh.data.AppDatabase;
+import com.abir2307055.lifelinkmesh.data.ChatMessage;
+import java.util.UUID;
+
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -71,6 +77,16 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         });
         btnSendHello.setOnClickListener(v ->
                 nearbyManager.sendToAll("Hello from " + nearbyManager.getLocalName()));
+
+        // TEMPORARY Room self-test: saves one row each time the app starts.
+        new Thread(() -> {
+            AppDatabase db = AppDatabase.getInstance(this);
+            db.messageDao().insert(new ChatMessage(
+                    UUID.randomUUID().toString(), "test", "hello room",
+                    System.currentTimeMillis(), true));
+            int rows = db.messageDao().getAll().size();
+            runOnUiThread(() -> appendLog("Room test: " + rows + " row(s) saved"));
+        }).start();
     }
 
     @Override
