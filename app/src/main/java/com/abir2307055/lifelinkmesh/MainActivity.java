@@ -64,7 +64,10 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         btnGrant.setOnClickListener(v ->
                 permissionLauncher.launch(getRequiredPermissions()));
         btnStart.setOnClickListener(v -> startMesh());
-        btnStop.setOnClickListener(v -> nearbyManager.stop());
+        btnStop.setOnClickListener(v -> {
+            nearbyManager.stop();
+            peerAdapter.clear();
+        });
     }
 
     @Override

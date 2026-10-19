@@ -82,7 +82,9 @@ public class NearbyManager {
     public void stop() {
         client.stopAdvertising();
         client.stopDiscovery();
-        log("Stopped advertising and discovery");
+        client.stopAllEndpoints();
+        initiatedEndpoints.clear();
+        log("Mesh stopped: advertising, discovery and all connections");
     }
 
     // Tie-break: if both phones tap each other at once, only one should send the request.

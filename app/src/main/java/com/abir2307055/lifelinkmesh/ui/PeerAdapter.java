@@ -65,6 +65,13 @@ public class PeerAdapter extends RecyclerView.Adapter<PeerAdapter.PeerViewHolder
         }
     }
 
+    // Empties the whole list, e.g. when the mesh is stopped.
+    public void clear() {
+        int count = peers.size();
+        peers.clear();
+        notifyItemRangeRemoved(0, count);
+    }
+
     public static class PeerViewHolder extends RecyclerView.ViewHolder {
         TextView txtPeerName;
         TextView txtPeerStatus;
