@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnGrant = findViewById(R.id.btnGrant);
         Button btnStart = findViewById(R.id.btnStart);
         Button btnStop = findViewById(R.id.btnStop);
+        Button btnSendHello = findViewById(R.id.btnSendHello);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         nearbyManager = new NearbyManager(this, this);
@@ -68,6 +69,13 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
             nearbyManager.stop();
             peerAdapter.clear();
         });
+        btnSendHello.setOnClickListener(v ->
+                nearbyManager.sendToAll("Hello from " + nearbyManager.getLocalName()));
+    }
+
+    @Override
+    public void onMessageReceived(String endpointId, String text) {
+        runOnUiThread(() -> appendLog("From " + endpointId + ": " + text));
     }
 
     @Override

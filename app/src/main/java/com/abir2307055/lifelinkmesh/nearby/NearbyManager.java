@@ -24,6 +24,7 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,6 +43,7 @@ public class NearbyManager {
         void onEndpointLost(String endpointId);
         void onConnectionRequest(String endpointId, String name, String digits, boolean incoming);
         void onConnectionStateChanged(String endpointId, String state);
+        void onMessageReceived(String endpointId, String text);
         void onLog(String message);
     }
 
@@ -51,6 +53,8 @@ public class NearbyManager {
     private final Handler handler = new Handler(Looper.getMainLooper());
     // Endpoints for which a connection has already been initiated (by either side).
     private final Set<String> initiatedEndpoints = ConcurrentHashMap.newKeySet();
+    // Endpoints we are fully connected to right now.
+    private final Set<String> connectedEndpoints = ConcurrentHashMap.newKeySet();
     private Listener listener;
 
     public NearbyManager(Context context, Listener listener) {
@@ -84,6 +88,7 @@ public class NearbyManager {
         client.stopDiscovery();
         client.stopAllEndpoints();
         initiatedEndpoints.clear();
+        connectedEndpoints.clear();
         log("Mesh stopped: advertising, discovery and all connections");
     }
 
@@ -124,6 +129,21 @@ public class NearbyManager {
         client.rejectConnection(endpointId);
     }
 
+    // Sends a short text to every connected phone.
+    public void sendToAll(String text) {
+        if (connectedEndpoints.isEmpty()) {
+            log("No connected peers to send to");
+            return;
+        }
+        byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        for (String endpointId : connectedEndpoints) {
+            // A new Payload object for each recipient.
+            client.sendPayload(endpointId, Payload.fromBytes(bytes))
+                    .addOnSuccessListener(unused -> log("Sent to " + endpointId))
+                    .addOnFailureListener(e -> log("Send failed: " + e.getMessage()));
+        }
+    }
+
     private void log(String message) {
         Log.d(TAG, message);
         if (listener != null) {
@@ -131,10 +151,17 @@ public class NearbyManager {
         }
     }
 
-    // Receives data from connected phones. Empty for now; Phase 1c fills it in.
+    // Receives data from connected phones.
     private final PayloadCallback payloadCallback = new PayloadCallback() {
         @Override
         public void onPayloadReceived(@NonNull String endpointId, @NonNull Payload payload) {
+            if (payload.getType() == Payload.Type.BYTES) {
+                byte[] bytes = payload.asBytes();
+                if (bytes != null) {
+                    listener.onMessageReceived(endpointId,
+                            new String(bytes, StandardCharsets.UTF_8));
+                }
+            }
         }
 
         @Override
@@ -179,10 +206,12 @@ public class NearbyManager {
                                                @NonNull ConnectionResolution result) {
                     int code = result.getStatus().getStatusCode();
                     if (code == ConnectionsStatusCodes.STATUS_OK) {
+                        connectedEndpoints.add(endpointId);
                         log("Connected to " + endpointId);
                         listener.onConnectionStateChanged(endpointId, Peer.STATUS_CONNECTED);
                     } else {
                         initiatedEndpoints.remove(endpointId);
+                        connectedEndpoints.remove(endpointId);
                         log("Connection failed or rejected, code " + code);
                         listener.onConnectionStateChanged(endpointId, Peer.STATUS_FAILED);
                     }
@@ -191,6 +220,7 @@ public class NearbyManager {
                 @Override
                 public void onDisconnected(@NonNull String endpointId) {
                     initiatedEndpoints.remove(endpointId);
+                    connectedEndpoints.remove(endpointId);
                     log("Disconnected from " + endpointId);
                     listener.onConnectionStateChanged(endpointId, Peer.STATUS_DISCONNECTED);
                 }
