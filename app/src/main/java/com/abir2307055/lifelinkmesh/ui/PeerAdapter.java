@@ -4,7 +4,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -17,15 +16,55 @@ import java.util.List;
 
 public class PeerAdapter extends RecyclerView.Adapter<PeerAdapter.PeerViewHolder> {
 
-    private final List<Peer> peers = new ArrayList<>();
+    public interface OnPeerClickListener {
+        void onPeerClick(Peer peer);
+    }
 
-    // Adds one peer and tells RecyclerView only that row changed.
-    public void addPeer(Peer peer) {
+    private final List<Peer> peers = new ArrayList<>();
+    private OnPeerClickListener clickListener;
+
+    public void setOnPeerClickListener(OnPeerClickListener listener) {
+        this.clickListener = listener;
+    }
+
+    private int indexOf(String endpointId) {
+        for (int i = 0; i < peers.size(); i++) {
+            if (peers.get(i).getEndpointId().equals(endpointId)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    // Adds the peer only if we don't already have that endpoint.
+    public void addIfAbsent(Peer peer) {
+        if (indexOf(peer.getEndpointId()) >= 0) {
+            return;
+        }
         peers.add(peer);
         notifyItemInserted(peers.size() - 1);
     }
 
-    // Holds the views of ONE row so they can be reused.
+    // Changes one peer's status. Returns false if the peer is not in the list.
+    public boolean updateStatus(String endpointId, String status) {
+        int index = indexOf(endpointId);
+        if (index < 0) {
+            return false;
+        }
+        peers.get(index).setStatus(status);
+        notifyItemChanged(index);
+        return true;
+    }
+
+    // A peer that went out of range before we connected is removed.
+    public void removeIfDiscovered(String endpointId) {
+        int index = indexOf(endpointId);
+        if (index >= 0 && Peer.STATUS_DISCOVERED.equals(peers.get(index).getStatus())) {
+            peers.remove(index);
+            notifyItemRemoved(index);
+        }
+    }
+
     public static class PeerViewHolder extends RecyclerView.ViewHolder {
         TextView txtPeerName;
         TextView txtPeerStatus;
@@ -50,12 +89,11 @@ public class PeerAdapter extends RecyclerView.Adapter<PeerAdapter.PeerViewHolder
         Peer peer = peers.get(position);
         holder.txtPeerName.setText(peer.getName());
         holder.txtPeerStatus.setText(peer.getStatus());
-        // Use the Peer object, not the position number: positions can shift
-        // when the list changes.
-        holder.itemView.setOnClickListener(v ->
-                Toast.makeText(v.getContext(),
-                        "Clicked " + peer.getName(),
-                        Toast.LENGTH_SHORT).show());
+        holder.itemView.setOnClickListener(v -> {
+            if (clickListener != null) {
+                clickListener.onPeerClick(peer);
+            }
+        });
     }
 
     @Override
