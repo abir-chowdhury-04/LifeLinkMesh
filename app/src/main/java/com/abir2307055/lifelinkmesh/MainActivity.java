@@ -1,12 +1,7 @@
 package com.abir2307055.lifelinkmesh;
 
-
-import com.abir2307055.lifelinkmesh.data.AppDatabase;
-import com.abir2307055.lifelinkmesh.data.ChatMessage;
-import java.util.UUID;
-
-
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -55,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnStart = findViewById(R.id.btnStart);
         Button btnStop = findViewById(R.id.btnStop);
         Button btnSendHello = findViewById(R.id.btnSendHello);
+        Button btnOpenChat = findViewById(R.id.btnOpenChat);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         nearbyManager = new NearbyManager(this, this);
@@ -77,16 +73,12 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         });
         btnSendHello.setOnClickListener(v ->
                 nearbyManager.sendToAll("Hello from " + nearbyManager.getLocalName()));
+        btnOpenChat.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ChatActivity.class);
+            intent.putExtra(ChatActivity.EXTRA_LOCAL_NAME, nearbyManager.getLocalName());
+            startActivity(intent);
+        });
 
-        // TEMPORARY Room self-test: saves one row each time the app starts.
-        new Thread(() -> {
-            AppDatabase db = AppDatabase.getInstance(this);
-            db.messageDao().insert(new ChatMessage(
-                    UUID.randomUUID().toString(), "test", "hello room",
-                    System.currentTimeMillis(), true));
-            int rows = db.messageDao().getAll().size();
-            runOnUiThread(() -> appendLog("Room test: " + rows + " row(s) saved"));
-        }).start();
     }
 
     @Override

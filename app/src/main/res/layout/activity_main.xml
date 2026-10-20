@@ -51,6 +51,12 @@
         android:layout_height="wrap_content"
         android:text="Send hello (temporary)" />
 
+    <Button
+        android:id="@+id/btnOpenChat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Open chat" />
+
     <TextView
         android:id="@+id/txtLog"
         android:layout_width="match_parent"
