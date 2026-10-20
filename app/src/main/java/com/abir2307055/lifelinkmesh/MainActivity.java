@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.abir2307055.lifelinkmesh.mesh.MeshHub;
 import com.abir2307055.lifelinkmesh.model.Peer;
 import com.abir2307055.lifelinkmesh.nearby.NearbyManager;
 import com.abir2307055.lifelinkmesh.ui.PeerAdapter;
@@ -30,7 +31,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     private TextView txtStatus;
     private TextView txtLog;
     private PeerAdapter peerAdapter;
-    private NearbyManager nearbyManager;
+    private MeshHub hub;
     private final List<String> logLines = new ArrayList<>();
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
@@ -53,37 +54,35 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnOpenChat = findViewById(R.id.btnOpenChat);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
-        nearbyManager = new NearbyManager(this, this);
+        hub = MeshHub.getInstance(this);
 
         txtDevice.setText("Android " + Build.VERSION.RELEASE
                 + " (API " + Build.VERSION.SDK_INT + ")\n"
-                + "Name: " + nearbyManager.getLocalName());
+                + "Name: " + hub.getLocalName());
 
         peerAdapter = new PeerAdapter();
         peerAdapter.setOnPeerClickListener(this::onPeerClicked);
         recyclerPeers.setLayoutManager(new LinearLayoutManager(this));
         recyclerPeers.setAdapter(peerAdapter);
+        // If this screen was recreated (e.g. rotation), restore the peers from the hub.
+        peerAdapter.setPeers(hub.getPeers());
+
+        hub.addListener(this);
 
         btnGrant.setOnClickListener(v ->
                 permissionLauncher.launch(getRequiredPermissions()));
         btnStart.setOnClickListener(v -> startMesh());
         btnStop.setOnClickListener(v -> {
-            nearbyManager.stop();
+            hub.stop();
             peerAdapter.clear();
         });
         btnSendHello.setOnClickListener(v ->
-                nearbyManager.sendToAll("Hello from " + nearbyManager.getLocalName()));
+                hub.sendToAll("Hello from " + hub.getLocalName()));
         btnOpenChat.setOnClickListener(v -> {
             Intent intent = new Intent(this, ChatActivity.class);
-            intent.putExtra(ChatActivity.EXTRA_LOCAL_NAME, nearbyManager.getLocalName());
+            intent.putExtra(ChatActivity.EXTRA_LOCAL_NAME, hub.getLocalName());
             startActivity(intent);
         });
-
-    }
-
-    @Override
-    public void onMessageReceived(String endpointId, String text) {
-        runOnUiThread(() -> appendLog("From " + endpointId + ": " + text));
     }
 
     @Override
@@ -92,12 +91,19 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         updateStatus();
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Stop listening, so the hub never calls into a destroyed screen.
+        hub.removeListener(this);
+    }
+
     private void startMesh() {
         if (!allPermissionsGranted()) {
             appendLog("Grant permissions first");
             return;
         }
-        nearbyManager.start();
+        hub.start();
     }
 
     private void onPeerClicked(Peer peer) {
@@ -106,11 +112,11 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
             Toast.makeText(this, peer.getName() + " is " + status, Toast.LENGTH_SHORT).show();
             return;
         }
-        peerAdapter.updateStatus(peer.getEndpointId(), Peer.STATUS_CONNECTING);
-        nearbyManager.connectTo(peer.getEndpointId(), peer.getName());
+        // The hub marks the peer "Connecting" and tells us, which updates the list.
+        hub.connectTo(peer.getEndpointId(), peer.getName());
     }
 
-    // ---- NearbyManager.Listener: results may arrive off the UI thread, so hop onto it ----
+    // ---- NearbyManager.Listener (events forwarded by the hub) ----
 
     @Override
     public void onEndpointFound(String endpointId, String name) {
@@ -123,21 +129,22 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         runOnUiThread(() -> peerAdapter.removeIfDiscovered(endpointId));
     }
 
-    // Shows the Accept / Reject dialog. Both phones get one.
     @Override
     public void onConnectionRequest(String endpointId, String name,
                                     String digits, boolean incoming) {
         runOnUiThread(() -> {
-            // Make sure the peer shows its real name in the list.
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
             peerAdapter.addIfAbsent(new Peer(endpointId, name, Peer.STATUS_CONNECTING));
             new AlertDialog.Builder(this)
                     .setTitle("Connect with " + name + "?")
                     .setMessage("Code: " + digits
                             + "\nCheck that the other phone shows the same code.")
                     .setPositiveButton("Accept",
-                            (dialog, which) -> nearbyManager.acceptConnection(endpointId))
+                            (dialog, which) -> hub.acceptConnection(endpointId))
                     .setNegativeButton("Reject",
-                            (dialog, which) -> nearbyManager.rejectConnection(endpointId))
+                            (dialog, which) -> hub.rejectConnection(endpointId))
                     .setCancelable(false)
                     .show();
         });
@@ -154,6 +161,11 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     }
 
     @Override
+    public void onMessageReceived(String endpointId, String text) {
+        runOnUiThread(() -> appendLog("From " + endpointId + ": " + text));
+    }
+
+    @Override
     public void onLog(String message) {
         runOnUiThread(() -> appendLog(message));
     }
@@ -166,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         txtLog.setText(TextUtils.join("\n", logLines));
     }
 
-    // ---- permissions (unchanged from Phase 0) ----
+    // ---- permissions (unchanged) ----
 
     private String[] getRequiredPermissions() {
         List<String> list = new ArrayList<>();

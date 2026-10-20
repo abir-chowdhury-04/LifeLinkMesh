@@ -72,6 +72,13 @@ public class PeerAdapter extends RecyclerView.Adapter<PeerAdapter.PeerViewHolder
         notifyItemRangeRemoved(0, count);
     }
 
+    // Replaces the whole list, e.g. when a screen is recreated.
+    public void setPeers(List<Peer> newPeers) {
+        peers.clear();
+        peers.addAll(newPeers);
+        notifyDataSetChanged();
+    }
+
     public static class PeerViewHolder extends RecyclerView.ViewHolder {
         TextView txtPeerName;
         TextView txtPeerStatus;
