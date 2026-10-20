@@ -50,7 +50,6 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnGrant = findViewById(R.id.btnGrant);
         Button btnStart = findViewById(R.id.btnStart);
         Button btnStop = findViewById(R.id.btnStop);
-        Button btnSendHello = findViewById(R.id.btnSendHello);
         Button btnOpenChat = findViewById(R.id.btnOpenChat);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
@@ -76,13 +75,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
             hub.stop();
             peerAdapter.clear();
         });
-        btnSendHello.setOnClickListener(v ->
-                hub.sendToAll("Hello from " + hub.getLocalName()));
-        btnOpenChat.setOnClickListener(v -> {
-            Intent intent = new Intent(this, ChatActivity.class);
-            intent.putExtra(ChatActivity.EXTRA_LOCAL_NAME, hub.getLocalName());
-            startActivity(intent);
-        });
+
+        btnOpenChat.setOnClickListener(v ->
+                startActivity(new Intent(this, ChatActivity.class)));
     }
 
     @Override

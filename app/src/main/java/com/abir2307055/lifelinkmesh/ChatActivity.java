@@ -12,23 +12,21 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.abir2307055.lifelinkmesh.data.AppDatabase;
 import com.abir2307055.lifelinkmesh.data.ChatMessage;
 import com.abir2307055.lifelinkmesh.data.MessageDao;
+import com.abir2307055.lifelinkmesh.mesh.MeshHub;
 import com.abir2307055.lifelinkmesh.ui.MessageAdapter;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class ChatActivity extends AppCompatActivity {
+public class ChatActivity extends AppCompatActivity implements MeshHub.ChatListener {
 
-    public static final String EXTRA_LOCAL_NAME = "local_name";
-
+    private MeshHub hub;
     private MessageAdapter adapter;
     private RecyclerView recyclerMessages;
     private EditText editMessage;
-    private String localName;
     private MessageDao dao;
-    // One background thread for all database work (Room refuses the main thread).
+    // Background thread used only to load saved messages when the screen opens.
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
@@ -37,12 +35,7 @@ public class ChatActivity extends AppCompatActivity {
         logLifecycle("onCreate");
         setContentView(R.layout.activity_chat);
 
-        // Value sent by MainActivity inside the Intent.
-        localName = getIntent().getStringExtra(EXTRA_LOCAL_NAME);
-        if (localName == null) {
-            localName = "Me";
-        }
-
+        hub = MeshHub.getInstance(this);
         dao = AppDatabase.getInstance(this).messageDao();
 
         recyclerMessages = findViewById(R.id.recyclerMessages);
@@ -63,6 +56,9 @@ public class ChatActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 adapter.setMessages(saved);
                 scrollToBottom();
+                // Start listening only after the saved messages are shown,
+                // so no message is shown twice.
+                hub.addChatListener(this);
             });
         });
     }
@@ -72,17 +68,16 @@ public class ChatActivity extends AppCompatActivity {
         if (text.isEmpty()) {
             return;
         }
-        ChatMessage message = new ChatMessage(
-                UUID.randomUUID().toString(), localName, text,
-                System.currentTimeMillis(), true);
         editMessage.setText("");
+        hub.sendChat(text);   // the hub saves it, sends it, and calls onChatMessage
+    }
 
-        executor.execute(() -> {
-            dao.insert(message);                 // save to Room (background thread)
-            runOnUiThread(() -> {                // update the screen (main thread)
-                adapter.addMessage(message);
-                scrollToBottom();
-            });
+    // Called by the hub for every new message, sent or received.
+    @Override
+    public void onChatMessage(ChatMessage message) {
+        runOnUiThread(() -> {
+            adapter.addMessage(message);
+            scrollToBottom();
         });
     }
 
@@ -106,6 +101,7 @@ public class ChatActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         logLifecycle("onDestroy");
+        hub.removeChatListener(this);
         executor.shutdown();
     }
 }
