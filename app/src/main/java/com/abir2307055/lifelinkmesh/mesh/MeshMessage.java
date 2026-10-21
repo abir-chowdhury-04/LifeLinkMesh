@@ -7,22 +7,42 @@ import org.json.JSONObject;
 public class MeshMessage {
 
     public static final String TYPE_CHAT = "CHAT";
+    public static final String TYPE_SOS = "SOS";
 
     public final String id;
     public final String type;
     public final String senderName;
     public final String text;
     public final long timestamp;
-    public final int ttl;      // hop limit; used from Phase 4 (relay)
+    public final int ttl;            // hop limit
+    // SOS only (empty / false for chat):
+    public final String category;
+    public final boolean hasLocation;
+    public final double latitude;
+    public final double longitude;
+    public final float accuracy;
 
+    // Chat message.
     public MeshMessage(String id, String type, String senderName,
                        String text, long timestamp, int ttl) {
+        this(id, type, senderName, text, timestamp, ttl, "", false, 0, 0, 0f);
+    }
+
+    // Full constructor (SOS).
+    public MeshMessage(String id, String type, String senderName, String text,
+                       long timestamp, int ttl, String category, boolean hasLocation,
+                       double latitude, double longitude, float accuracy) {
         this.id = id;
         this.type = type;
         this.senderName = senderName;
         this.text = text;
         this.timestamp = timestamp;
         this.ttl = ttl;
+        this.category = category;
+        this.hasLocation = hasLocation;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.accuracy = accuracy;
     }
 
     public String toJson() throws JSONException {
@@ -33,6 +53,15 @@ public class MeshMessage {
         json.put("text", text);
         json.put("timestamp", timestamp);
         json.put("ttl", ttl);
+        if (TYPE_SOS.equals(type)) {
+            json.put("category", category);
+            json.put("hasLocation", hasLocation);
+            if (hasLocation) {
+                json.put("latitude", latitude);
+                json.put("longitude", longitude);
+                json.put("accuracy", (double) accuracy);
+            }
+        }
         return json.toString();
     }
 
@@ -44,11 +73,17 @@ public class MeshMessage {
                 json.getString("senderName"),
                 json.getString("text"),
                 json.getLong("timestamp"),
-                json.getInt("ttl"));
+                json.getInt("ttl"),
+                json.optString("category", ""),
+                json.optBoolean("hasLocation", false),
+                json.optDouble("latitude", 0),
+                json.optDouble("longitude", 0),
+                (float) json.optDouble("accuracy", 0));
     }
 
     // A copy of this message with a different ttl (used when relaying).
     public MeshMessage withTtl(int newTtl) {
-        return new MeshMessage(id, type, senderName, text, timestamp, newTtl);
+        return new MeshMessage(id, type, senderName, text, timestamp, newTtl,
+                category, hasLocation, latitude, longitude, accuracy);
     }
 }

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    android:padding="12dp">
+
+    <RadioGroup
+        android:id="@+id/radioCategory"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checkedButton="@+id/radioMedical"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/radioMedical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Medical" />
+
+        <RadioButton
+            android:id="@+id/radioTrapped"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Trapped" />
+
+        <RadioButton
+            android:id="@+id/radioSupplies"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Supplies" />
+
+        <RadioButton
+            android:id="@+id/radioOther"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Other" />
+    </RadioGroup>
+
+    <EditText
+        android:id="@+id/editSosNote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Short note (optional)"
+        android:inputType="textCapSentences"
+        android:maxLines="2" />
+
+    <TextView
+        android:id="@+id/txtLocation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textSize="13sp" />
+
+    <Button
+        android:id="@+id/btnSendSos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="SEND SOS" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="SOS alerts"
+        android:textStyle="bold" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerSos"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+</LinearLayout>

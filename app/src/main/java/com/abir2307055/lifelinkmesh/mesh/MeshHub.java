@@ -5,6 +5,8 @@ import android.content.Context;
 import com.abir2307055.lifelinkmesh.data.AppDatabase;
 import com.abir2307055.lifelinkmesh.data.ChatMessage;
 import com.abir2307055.lifelinkmesh.data.MessageDao;
+import com.abir2307055.lifelinkmesh.data.SosAlert;
+import com.abir2307055.lifelinkmesh.data.SosDao;
 import com.abir2307055.lifelinkmesh.model.Peer;
 import com.abir2307055.lifelinkmesh.nearby.NearbyManager;
 
@@ -12,29 +14,31 @@ import org.json.JSONException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
-// One shared object for the whole app. It owns Nearby, the peer list and message saving.
-// Screens never talk to Nearby directly; they talk to the hub and listen to it.
+// One shared object for the whole app. It owns Nearby, the peer list, message saving
+// and relaying. Screens never talk to Nearby directly; they talk to the hub.
 public class MeshHub implements NearbyManager.Listener {
 
-    // Screens showing chat implement this to be told about each new message.
+    // Screens showing chat implement this to be told about each new chat message.
     public interface ChatListener {
         void onChatMessage(ChatMessage message);
     }
 
-    // Placeholder hop limit; it starts to matter in Phase 4 (relay).
-    private static final int DEFAULT_TTL = 5;
+    // Screens showing SOS alerts implement this.
+    public interface SosListener {
+        void onSos(SosAlert alert);
+    }
+
+    private static final int DEFAULT_TTL = 5;   // chat: up to 5 hops
+    private static final int SOS_TTL = 8;       // SOS reaches further than chat
 
     private static MeshHub instance;
-
-    // Duplicate cache: ids of messages this phone has already handled.
-    private final Set<String> seenIds = ConcurrentHashMap.newKeySet();
 
     public static synchronized MeshHub getInstance(Context context) {
         if (instance == null) {
@@ -45,16 +49,22 @@ public class MeshHub implements NearbyManager.Listener {
 
     private final NearbyManager nearbyManager;
     private final MessageDao dao;
+    private final SosDao sosDao;
     // One background thread for all database work done by the hub.
     private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
     private final List<NearbyManager.Listener> uiListeners = new CopyOnWriteArrayList<>();
     private final List<ChatListener> chatListeners = new CopyOnWriteArrayList<>();
+    private final List<SosListener> sosListeners = new CopyOnWriteArrayList<>();
     // The single source of truth for who is nearby and their status.
     private final List<Peer> peers = new ArrayList<>();
+    // Duplicate cache: ids of messages this phone has already handled.
+    private final Set<String> seenIds = ConcurrentHashMap.newKeySet();
 
     private MeshHub(Context appContext) {
         nearbyManager = new NearbyManager(appContext, this);
-        dao = AppDatabase.getInstance(appContext).messageDao();
+        AppDatabase db = AppDatabase.getInstance(appContext);
+        dao = db.messageDao();
+        sosDao = db.sosDao();
     }
 
     // ---- screens register and unregister ----
@@ -73,6 +83,14 @@ public class MeshHub implements NearbyManager.Listener {
 
     public void removeChatListener(ChatListener listener) {
         chatListeners.remove(listener);
+    }
+
+    public void addSosListener(SosListener listener) {
+        sosListeners.add(listener);
+    }
+
+    public void removeSosListener(SosListener listener) {
+        sosListeners.remove(listener);
     }
 
     // ---- commands from screens ----
@@ -116,12 +134,12 @@ public class MeshHub implements NearbyManager.Listener {
         nearbyManager.rejectConnection(endpointId);
     }
 
-    // Saves my message in Room, shows it, and sends it to every connected phone.
+    // Saves my chat message in Room, shows it, and sends it to every connected phone.
     public void sendChat(String text) {
         long now = System.currentTimeMillis();
         String id = UUID.randomUUID().toString();
-        seenIds.add(id);   // so my own message is ignored if it comes back around
         String senderName = nearbyManager.getLocalName();
+        seenIds.add(id);   // so my own message is ignored if it comes back around
 
         ChatMessage saved = new ChatMessage(id, senderName, text, now, true);
         dbExecutor.execute(() -> {
@@ -138,9 +156,39 @@ public class MeshHub implements NearbyManager.Listener {
         }
     }
 
+    // Saves my SOS in Room, shows it, and sends it with a longer hop limit.
+    public void sendSos(String category, String note, boolean hasLocation,
+                        double latitude, double longitude, float accuracy) {
+        long now = System.currentTimeMillis();
+        String id = UUID.randomUUID().toString();
+        String senderName = nearbyManager.getLocalName();
+        seenIds.add(id);
+
+        SosAlert alert = new SosAlert(id, senderName, category, note, now,
+                hasLocation, latitude, longitude, accuracy, true);
+        dbExecutor.execute(() -> {
+            sosDao.insert(alert);
+            notifySos(alert);
+        });
+
+        MeshMessage wire = new MeshMessage(id, MeshMessage.TYPE_SOS, senderName, note,
+                now, SOS_TTL, category, hasLocation, latitude, longitude, accuracy);
+        try {
+            nearbyManager.sendToAll(wire.toJson());
+        } catch (JSONException e) {
+            onLog("Could not build SOS: " + e.getMessage());
+        }
+    }
+
     private void notifyChat(ChatMessage message) {
         for (ChatListener l : chatListeners) {
             l.onChatMessage(message);
+        }
+    }
+
+    private void notifySos(SosAlert alert) {
+        for (SosListener l : sosListeners) {
+            l.onSos(alert);
         }
     }
 
@@ -209,13 +257,14 @@ public class MeshHub implements NearbyManager.Listener {
         }
     }
 
-    // Raw text arrived from a peer: read the JSON, save it, tell the chat screen.
     // Raw text arrived from a peer: read the JSON, drop duplicates, save, show, relay.
     @Override
     public void onMessageReceived(String endpointId, String text) {
         try {
             MeshMessage wire = MeshMessage.fromJson(text);
-            if (!MeshMessage.TYPE_CHAT.equals(wire.type)) {
+            boolean isChat = MeshMessage.TYPE_CHAT.equals(wire.type);
+            boolean isSos = MeshMessage.TYPE_SOS.equals(wire.type);
+            if (!isChat && !isSos) {
                 onLog("Ignored message type " + wire.type);
                 return;
             }
@@ -224,17 +273,32 @@ public class MeshHub implements NearbyManager.Listener {
                 onLog("Duplicate ignored (seen before)");
                 return;
             }
-            ChatMessage received = new ChatMessage(
-                    wire.id, wire.senderName, wire.text, wire.timestamp, false);
             dbExecutor.execute(() -> {
                 // Layer 2: Room ignores an id it already stores (returns -1).
-                long rowId = dao.insert(received);
-                if (rowId == -1) {
+                boolean isNew;
+                if (isSos) {
+                    SosAlert alert = new SosAlert(wire.id, wire.senderName, wire.category,
+                            wire.text, wire.timestamp, wire.hasLocation, wire.latitude,
+                            wire.longitude, wire.accuracy, false);
+                    isNew = sosDao.insert(alert) != -1;
+                    if (isNew) {
+                        onLog("SOS " + wire.category + " from " + wire.senderName
+                                + " (ttl " + wire.ttl + ")");
+                        notifySos(alert);
+                    }
+                } else {
+                    ChatMessage received = new ChatMessage(
+                            wire.id, wire.senderName, wire.text, wire.timestamp, false);
+                    isNew = dao.insert(received) != -1;
+                    if (isNew) {
+                        onLog("Chat from " + wire.senderName + " (ttl " + wire.ttl + ")");
+                        notifyChat(received);
+                    }
+                }
+                if (!isNew) {
                     onLog("Duplicate ignored (already saved)");
                     return;
                 }
-                onLog("Chat from " + wire.senderName + " (ttl " + wire.ttl + ")");
-                notifyChat(received);
                 relay(endpointId, wire);
             });
         } catch (JSONException e) {

@@ -51,6 +51,12 @@
         android:layout_height="wrap_content"
         android:text="Open chat" />
 
+    <Button
+        android:id="@+id/btnSos"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SOS" />
+
     <TextView
         android:id="@+id/txtLog"
         android:layout_width="match_parent"

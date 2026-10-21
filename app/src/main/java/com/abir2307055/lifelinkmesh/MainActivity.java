@@ -52,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnStart = findViewById(R.id.btnStart);
         Button btnStop = findViewById(R.id.btnStop);
         Button btnOpenChat = findViewById(R.id.btnOpenChat);
+        Button btnSos = findViewById(R.id.btnSos);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
@@ -79,6 +80,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
         btnOpenChat.setOnClickListener(v ->
                 startActivity(new Intent(this, ChatActivity.class)));
+
+        btnSos.setOnClickListener(v ->
+                startActivity(new Intent(this, SosActivity.class)));
     }
 
     @Override
