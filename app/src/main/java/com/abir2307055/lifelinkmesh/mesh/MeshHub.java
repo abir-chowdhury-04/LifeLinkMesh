@@ -40,6 +40,8 @@ public class MeshHub implements NearbyManager.Listener {
 
     private static MeshHub instance;
 
+    private final Context appContext;
+
     public static synchronized MeshHub getInstance(Context context) {
         if (instance == null) {
             instance = new MeshHub(context.getApplicationContext());
@@ -61,6 +63,7 @@ public class MeshHub implements NearbyManager.Listener {
     private final Set<String> seenIds = ConcurrentHashMap.newKeySet();
 
     private MeshHub(Context appContext) {
+        this.appContext = appContext;
         nearbyManager = new NearbyManager(appContext, this);
         AppDatabase db = AppDatabase.getInstance(appContext);
         dao = db.messageDao();
@@ -285,6 +288,7 @@ public class MeshHub implements NearbyManager.Listener {
                         onLog("SOS " + wire.category + " from " + wire.senderName
                                 + " (ttl " + wire.ttl + ")");
                         notifySos(alert);
+                        SosNotifier.show(appContext, alert);
                     }
                 } else {
                     ChatMessage received = new ChatMessage(
