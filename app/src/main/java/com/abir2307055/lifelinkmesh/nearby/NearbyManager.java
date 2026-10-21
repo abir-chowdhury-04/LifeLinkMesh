@@ -130,17 +130,27 @@ public class NearbyManager {
     }
 
     // Sends a short text to every connected phone.
+    // Sends a short text to every connected phone.
     public void sendToAll(String text) {
-        if (connectedEndpoints.isEmpty()) {
-            log("No connected peers to send to");
-            return;
-        }
+        sendToAllExcept(null, text);
+    }
+
+    // Same, but skips one endpoint (used for relay: don't send back to where it came from).
+    public void sendToAllExcept(String excludedEndpointId, String text) {
         byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+        int count = 0;
         for (String endpointId : connectedEndpoints) {
+            if (endpointId.equals(excludedEndpointId)) {
+                continue;
+            }
+            count++;
             // A new Payload object for each recipient.
             client.sendPayload(endpointId, Payload.fromBytes(bytes))
                     .addOnSuccessListener(unused -> log("Sent to " + endpointId))
                     .addOnFailureListener(e -> log("Send failed: " + e.getMessage()));
+        }
+        if (count == 0) {
+            log("No peers to send to");
         }
     }
 

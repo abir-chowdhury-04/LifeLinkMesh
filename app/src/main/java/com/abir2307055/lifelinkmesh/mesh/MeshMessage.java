@@ -46,4 +46,9 @@ public class MeshMessage {
                 json.getLong("timestamp"),
                 json.getInt("ttl"));
     }
+
+    // A copy of this message with a different ttl (used when relaying).
+    public MeshMessage withTtl(int newTtl) {
+        return new MeshMessage(id, type, senderName, text, timestamp, newTtl);
+    }
 }

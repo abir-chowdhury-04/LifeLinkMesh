@@ -16,6 +16,8 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 // One shared object for the whole app. It owns Nearby, the peer list and message saving.
 // Screens never talk to Nearby directly; they talk to the hub and listen to it.
@@ -30,6 +32,9 @@ public class MeshHub implements NearbyManager.Listener {
     private static final int DEFAULT_TTL = 5;
 
     private static MeshHub instance;
+
+    // Duplicate cache: ids of messages this phone has already handled.
+    private final Set<String> seenIds = ConcurrentHashMap.newKeySet();
 
     public static synchronized MeshHub getInstance(Context context) {
         if (instance == null) {
@@ -115,6 +120,7 @@ public class MeshHub implements NearbyManager.Listener {
     public void sendChat(String text) {
         long now = System.currentTimeMillis();
         String id = UUID.randomUUID().toString();
+        seenIds.add(id);   // so my own message is ignored if it comes back around
         String senderName = nearbyManager.getLocalName();
 
         ChatMessage saved = new ChatMessage(id, senderName, text, now, true);
@@ -204,6 +210,7 @@ public class MeshHub implements NearbyManager.Listener {
     }
 
     // Raw text arrived from a peer: read the JSON, save it, tell the chat screen.
+    // Raw text arrived from a peer: read the JSON, drop duplicates, save, show, relay.
     @Override
     public void onMessageReceived(String endpointId, String text) {
         try {
@@ -212,19 +219,41 @@ public class MeshHub implements NearbyManager.Listener {
                 onLog("Ignored message type " + wire.type);
                 return;
             }
+            // Layer 1: in-memory duplicate cache.
+            if (!seenIds.add(wire.id)) {
+                onLog("Duplicate ignored (seen before)");
+                return;
+            }
             ChatMessage received = new ChatMessage(
                     wire.id, wire.senderName, wire.text, wire.timestamp, false);
             dbExecutor.execute(() -> {
+                // Layer 2: Room ignores an id it already stores (returns -1).
                 long rowId = dao.insert(received);
                 if (rowId == -1) {
-                    onLog("Duplicate message ignored");
-                } else {
-                    onLog("Chat from " + wire.senderName);
-                    notifyChat(received);
+                    onLog("Duplicate ignored (already saved)");
+                    return;
                 }
+                onLog("Chat from " + wire.senderName + " (ttl " + wire.ttl + ")");
+                notifyChat(received);
+                relay(endpointId, wire);
             });
         } catch (JSONException e) {
             onLog("Unreadable message: " + e.getMessage());
+        }
+    }
+
+    // Forwards a new message to everyone except the phone it came from.
+    private void relay(String fromEndpointId, MeshMessage wire) {
+        if (wire.ttl <= 1) {
+            onLog("TTL used up, not relaying");
+            return;
+        }
+        try {
+            String json = wire.withTtl(wire.ttl - 1).toJson();
+            nearbyManager.sendToAllExcept(fromEndpointId, json);
+            onLog("Relayed with ttl " + (wire.ttl - 1));
+        } catch (JSONException e) {
+            onLog("Could not relay: " + e.getMessage());
         }
     }
 
