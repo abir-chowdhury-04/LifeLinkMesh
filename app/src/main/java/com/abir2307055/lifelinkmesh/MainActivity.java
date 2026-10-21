@@ -22,6 +22,7 @@ import com.abir2307055.lifelinkmesh.mesh.MeshHub;
 import com.abir2307055.lifelinkmesh.model.Peer;
 import com.abir2307055.lifelinkmesh.nearby.NearbyManager;
 import com.abir2307055.lifelinkmesh.ui.PeerAdapter;
+import com.abir2307055.lifelinkmesh.mesh.MeshService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,7 +73,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
                 permissionLauncher.launch(getRequiredPermissions()));
         btnStart.setOnClickListener(v -> startMesh());
         btnStop.setOnClickListener(v -> {
-            hub.stop();
+            stopService(new Intent(this, MeshService.class));   // the service stops the hub
             peerAdapter.clear();
         });
 
@@ -98,7 +99,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
             appendLog("Grant permissions first");
             return;
         }
-        hub.start();
+        ContextCompat.startForegroundService(this, new Intent(this, MeshService.class));
     }
 
     private void onPeerClicked(Peer peer) {
@@ -186,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             list.add(Manifest.permission.NEARBY_WIFI_DEVICES);
+            list.add(Manifest.permission.POST_NOTIFICATIONS);
         }
         return list.toArray(new String[0]);
     }
