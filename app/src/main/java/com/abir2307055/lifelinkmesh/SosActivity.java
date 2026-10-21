@@ -19,6 +19,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -60,6 +61,8 @@ public class SosActivity extends AppCompatActivity
         editSosNote = findViewById(R.id.editSosNote);
         txtLocation = findViewById(R.id.txtLocation);
         Button btnSendSos = findViewById(R.id.btnSendSos);
+        Button btnClearSos = findViewById(R.id.btnClearSos);
+        btnClearSos.setOnClickListener(v -> confirmClear());
         RecyclerView recyclerSos = findViewById(R.id.recyclerSos);
 
         adapter = new SosAdapter();
@@ -104,6 +107,18 @@ public class SosActivity extends AppCompatActivity
     @Override
     public void onSos(SosAlert alert) {
         runOnUiThread(() -> adapter.addAlert(alert));
+    }
+
+    private void confirmClear() {
+        new AlertDialog.Builder(this)
+                .setTitle("Clear SOS alerts?")
+                .setMessage("This deletes the saved alerts on this phone only.")
+                .setPositiveButton("Clear", (dialog, which) -> executor.execute(() -> {
+                    sosDao.deleteAll();
+                    runOnUiThread(() -> adapter.clear());
+                }))
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     // Opens a map app at the alert's position (implicit Intent).

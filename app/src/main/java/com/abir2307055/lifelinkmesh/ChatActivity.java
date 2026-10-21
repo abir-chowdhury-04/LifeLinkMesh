@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import androidx.appcompat.app.AlertDialog;
+
 public class ChatActivity extends AppCompatActivity implements MeshHub.ChatListener {
 
     private MeshHub hub;
@@ -41,6 +43,9 @@ public class ChatActivity extends AppCompatActivity implements MeshHub.ChatListe
         recyclerMessages = findViewById(R.id.recyclerMessages);
         editMessage = findViewById(R.id.editMessage);
         Button btnSend = findViewById(R.id.btnSend);
+
+        Button btnClearChat = findViewById(R.id.btnClearChat);
+        btnClearChat.setOnClickListener(v -> confirmClear());
 
         adapter = new MessageAdapter();
         recyclerMessages.setLayoutManager(new LinearLayoutManager(this));
@@ -79,6 +84,18 @@ public class ChatActivity extends AppCompatActivity implements MeshHub.ChatListe
             adapter.addMessage(message);
             scrollToBottom();
         });
+    }
+
+    private void confirmClear() {
+        new AlertDialog.Builder(this)
+                .setTitle("Clear chat history?")
+                .setMessage("This deletes the saved messages on this phone only.")
+                .setPositiveButton("Clear", (dialog, which) -> executor.execute(() -> {
+                    dao.deleteAll();
+                    runOnUiThread(() -> adapter.clear());
+                }))
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void scrollToBottom() {

@@ -17,4 +17,7 @@ public interface MessageDao {
 
     @Query("SELECT * FROM messages ORDER BY timestamp ASC")
     List<ChatMessage> getAll();
+
+    @Query("DELETE FROM messages")
+    void deleteAll();
 }

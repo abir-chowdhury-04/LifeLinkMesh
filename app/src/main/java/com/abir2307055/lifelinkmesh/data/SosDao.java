@@ -16,4 +16,7 @@ public interface SosDao {
 
     @Query("SELECT * FROM sos_alerts ORDER BY timestamp DESC")
     List<SosAlert> getAll();
+
+    @Query("DELETE FROM sos_alerts")
+    void deleteAll();
 }

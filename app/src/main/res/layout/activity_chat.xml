@@ -6,6 +6,26 @@
     android:fitsSystemWindows="true"
     android:padding="8dp">
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:text="Chat"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnClearChat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear history" />
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerMessages"
         android:layout_width="match_parent"
@@ -24,7 +44,8 @@
             android:layout_weight="1"
             android:hint="Type a message"
             android:inputType="textCapSentences"
-            android:maxLines="3" />
+            android:maxLines="3"
+            android:minHeight="48dp" />
 
         <Button
             android:id="@+id/btnSend"

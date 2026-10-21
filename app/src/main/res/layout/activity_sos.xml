@@ -44,7 +44,8 @@
         android:layout_height="wrap_content"
         android:hint="Short note (optional)"
         android:inputType="textCapSentences"
-        android:maxLines="2" />
+        android:maxLines="2"
+        android:minHeight="48dp" />
 
     <TextView
         android:id="@+id/txtLocation"
@@ -59,12 +60,26 @@
         android:layout_height="wrap_content"
         android:text="SEND SOS" />
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="SOS alerts"
-        android:textStyle="bold" />
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:text="SOS alerts"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnClearSos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear alerts" />
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerSos"

@@ -104,4 +104,10 @@ public class SosAdapter extends RecyclerView.Adapter<SosAdapter.SosViewHolder> {
     public int getItemCount() {
         return alerts.size();
     }
+
+    public void clear() {
+        int count = alerts.size();
+        alerts.clear();
+        notifyItemRangeRemoved(0, count);
+    }
 }
