@@ -72,6 +72,22 @@ public class PeerAdapter extends RecyclerView.Adapter<PeerAdapter.PeerViewHolder
         notifyItemRangeRemoved(0, count);
     }
 
+    // Returns true if the peer is already listed. If it was idle (Disconnected or
+    // Failed), it is shown as Discovered again.
+    public boolean reviveIfIdle(String endpointId) {
+        int index = indexOf(endpointId);
+        if (index < 0) {
+            return false;
+        }
+        Peer peer = peers.get(index);
+        if (Peer.STATUS_DISCONNECTED.equals(peer.getStatus())
+                || Peer.STATUS_FAILED.equals(peer.getStatus())) {
+            peer.setStatus(Peer.STATUS_DISCOVERED);
+            notifyItemChanged(index);
+        }
+        return true;
+    }
+
     // Replaces the whole list, e.g. when a screen is recreated.
     public void setPeers(List<Peer> newPeers) {
         peers.clear();

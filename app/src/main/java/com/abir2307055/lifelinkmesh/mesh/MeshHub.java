@@ -124,6 +124,22 @@ public class MeshHub implements NearbyManager.Listener {
         }
     }
 
+    // Forgets idle peers and restarts the search, without dropping live connections.
+    public void refresh() {
+        synchronized (peers) {
+            List<Peer> keep = new ArrayList<>();
+            for (Peer p : peers) {
+                String s = p.getStatus();
+                if (Peer.STATUS_CONNECTED.equals(s) || Peer.STATUS_CONNECTING.equals(s)) {
+                    keep.add(p);
+                }
+            }
+            peers.clear();
+            peers.addAll(keep);
+        }
+        nearbyManager.refreshDiscovery();
+    }
+
     public void connectTo(String endpointId, String name) {
         onConnectionStateChanged(endpointId, Peer.STATUS_CONNECTING);
         nearbyManager.connectTo(endpointId, name);
@@ -210,8 +226,12 @@ public class MeshHub implements NearbyManager.Listener {
     @Override
     public void onEndpointFound(String endpointId, String name) {
         synchronized (peers) {
-            if (find(endpointId) == null) {
+            Peer existing = find(endpointId);
+            if (existing == null) {
                 peers.add(new Peer(endpointId, name, Peer.STATUS_DISCOVERED));
+            } else if (Peer.STATUS_DISCONNECTED.equals(existing.getStatus())
+                    || Peer.STATUS_FAILED.equals(existing.getStatus())) {
+                existing.setStatus(Peer.STATUS_DISCOVERED);   // seen again after it dropped
             }
         }
         for (NearbyManager.Listener l : uiListeners) {

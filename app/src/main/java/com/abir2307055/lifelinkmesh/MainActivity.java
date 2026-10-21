@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnStop = findViewById(R.id.btnStop);
         Button btnOpenChat = findViewById(R.id.btnOpenChat);
         Button btnSos = findViewById(R.id.btnSos);
+        Button btnRefresh = findViewById(R.id.btnRefresh);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
@@ -83,6 +84,11 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
         btnSos.setOnClickListener(v ->
                 startActivity(new Intent(this, SosActivity.class)));
+
+        btnRefresh.setOnClickListener(v -> {
+            hub.refresh();
+            peerAdapter.setPeers(hub.getPeers());
+        });
     }
 
     @Override
@@ -120,8 +126,11 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
     @Override
     public void onEndpointFound(String endpointId, String name) {
-        runOnUiThread(() ->
-                peerAdapter.addIfAbsent(new Peer(endpointId, name, Peer.STATUS_DISCOVERED)));
+        runOnUiThread(() -> {
+            if (!peerAdapter.reviveIfIdle(endpointId)) {
+                peerAdapter.addIfAbsent(new Peer(endpointId, name, Peer.STATUS_DISCOVERED));
+            }
+        });
     }
 
     @Override

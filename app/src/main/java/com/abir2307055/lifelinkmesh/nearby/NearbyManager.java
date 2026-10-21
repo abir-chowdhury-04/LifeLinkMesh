@@ -57,6 +57,8 @@ public class NearbyManager {
     private final Set<String> connectedEndpoints = ConcurrentHashMap.newKeySet();
     private Listener listener;
 
+    private boolean running = false;   // true between start() and stop()
+
     public NearbyManager(Context context, Listener listener) {
         Context appContext = context.getApplicationContext();
         this.client = Nearby.getConnectionsClient(appContext);
@@ -70,6 +72,7 @@ public class NearbyManager {
     }
 
     public void start() {
+        running = true;
         AdvertisingOptions advertisingOptions =
                 new AdvertisingOptions.Builder().setStrategy(STRATEGY).build();
         client.startAdvertising(localName, serviceId, connectionLifecycleCallback, advertisingOptions)
@@ -84,12 +87,27 @@ public class NearbyManager {
     }
 
     public void stop() {
+        running = false;
         client.stopAdvertising();
         client.stopDiscovery();
         client.stopAllEndpoints();
         initiatedEndpoints.clear();
         connectedEndpoints.clear();
         log("Mesh stopped: advertising, discovery and all connections");
+    }
+
+    // Restarts only the search for nearby phones. Existing connections stay up.
+    public void refreshDiscovery() {
+        if (!running) {
+            log("Start the mesh first");
+            return;
+        }
+        client.stopDiscovery();
+        DiscoveryOptions discoveryOptions =
+                new DiscoveryOptions.Builder().setStrategy(STRATEGY).build();
+        client.startDiscovery(serviceId, endpointDiscoveryCallback, discoveryOptions)
+                .addOnSuccessListener(unused -> log("Discovery restarted"))
+                .addOnFailureListener(e -> log("Refresh failed: " + e.getMessage()));
     }
 
     // Tie-break: if both phones tap each other at once, only one should send the request.
