@@ -6,12 +6,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ServiceInfo;
 import android.os.IBinder;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
+import androidx.core.content.ContextCompat;
 
 import com.abir2307055.lifelinkmesh.MainActivity;
 
@@ -21,6 +23,8 @@ public class MeshService extends Service {
 
     private static final String CHANNEL_ID = "mesh_service";
     private static final int NOTIFICATION_ID = 1;
+
+    private BatteryReceiver batteryReceiver;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -32,6 +36,16 @@ public class MeshService extends Service {
                 buildNotification(),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
 
+        // Listen for low-battery broadcasts for as long as this service runs.
+        if (batteryReceiver == null) {
+            batteryReceiver = new BatteryReceiver();
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(Intent.ACTION_BATTERY_LOW);
+            filter.addAction(Intent.ACTION_BATTERY_OKAY);
+            ContextCompat.registerReceiver(this, batteryReceiver, filter,
+                    ContextCompat.RECEIVER_EXPORTED);
+        }
+
         MeshHub.getInstance(this).start();
         // If Android kills the service, ask it to restart it.
         return START_STICKY;
@@ -40,6 +54,10 @@ public class MeshService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (batteryReceiver != null) {
+            unregisterReceiver(batteryReceiver);   // always unregister, or it leaks
+            batteryReceiver = null;
+        }
         MeshHub.getInstance(this).stop();
     }
 

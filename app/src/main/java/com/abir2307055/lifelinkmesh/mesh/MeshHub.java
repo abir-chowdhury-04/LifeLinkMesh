@@ -69,6 +69,8 @@ public class MeshHub implements NearbyManager.Listener {
     // What this phone knows about who is linked to whom.
     private final NetworkGraph graph = new NetworkGraph();
     private final Handler handler = new Handler(Looper.getMainLooper());
+    // True when the battery is low: then only SOS is relayed.
+    private volatile boolean batterySaver = false;
 
     // Sends my neighbour report every few seconds while the mesh is running.
     private final Runnable topoTick = new Runnable() {
@@ -159,6 +161,15 @@ public class MeshHub implements NearbyManager.Listener {
             peers.addAll(keep);
         }
         nearbyManager.refreshDiscovery();
+    }
+
+    public boolean isBatterySaver() {
+        return batterySaver;
+    }
+
+    public void setBatterySaver(boolean on, String reason) {
+        batterySaver = on;
+        onLog("Battery saver " + (on ? "ON" : "OFF") + ": " + reason);
     }
 
     public void connectTo(String endpointId, String name) {
@@ -441,6 +452,13 @@ public class MeshHub implements NearbyManager.Listener {
     // Forwards a new message to everyone except the phone it came from.
     // quiet = true is used for neighbour reports (no log lines, no path, no highlight).
     private void relay(String fromEndpointId, MeshMessage wire, boolean quiet) {
+        // Battery saver: relay only urgent (SOS) messages.
+        if (batterySaver && !MeshMessage.TYPE_SOS.equals(wire.type)) {
+            if (!quiet) {
+                onLog("Battery saver: not relaying " + wire.type);
+            }
+            return;
+        }
         if (wire.ttl <= 1) {
             if (!quiet) {
                 onLog("TTL used up, not relaying");

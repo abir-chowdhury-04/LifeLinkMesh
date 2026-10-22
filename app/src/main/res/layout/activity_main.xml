@@ -70,6 +70,12 @@
         android:layout_height="wrap_content"
         android:text="Network graph" />
 
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchSaver"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Battery saver (test switch)" />
+
     <TextView
         android:id="@+id/txtLog"
         android:layout_width="match_parent"

@@ -13,6 +13,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -34,6 +35,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     private PeerAdapter peerAdapter;
     private MeshHub hub;
     private final List<String> logLines = new ArrayList<>();
+    private SwitchCompat switchSaver;
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(
@@ -58,6 +60,13 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
+        switchSaver = findViewById(R.id.switchSaver);
+        switchSaver.setOnCheckedChangeListener((button, checked) -> {
+            if (button.isPressed()) {   // only when the user taps it, not when we set it
+                hub.setBatterySaver(checked, checked
+                        ? "turned on with the test switch" : "turned off with the test switch");
+            }
+        });
 
         txtDevice.setText("Android " + Build.VERSION.RELEASE
                 + " (API " + Build.VERSION.SDK_INT + ")\n"
@@ -99,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     protected void onResume() {
         super.onResume();
         updateStatus();
+        switchSaver.setChecked(hub.isBatterySaver());
     }
 
     @Override
