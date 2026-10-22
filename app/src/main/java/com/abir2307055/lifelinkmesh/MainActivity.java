@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnOpenChat = findViewById(R.id.btnOpenChat);
         Button btnSos = findViewById(R.id.btnSos);
         Button btnRefresh = findViewById(R.id.btnRefresh);
+        Button btnGraph = findViewById(R.id.btnGraph);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
@@ -89,6 +90,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
             hub.refresh();
             peerAdapter.setPeers(hub.getPeers());
         });
+
+        btnGraph.setOnClickListener(v ->
+                startActivity(new Intent(this, NetworkGraphActivity.class)));
     }
 
     @Override

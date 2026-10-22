@@ -64,6 +64,12 @@
         android:layout_height="wrap_content"
         android:text="SOS" />
 
+    <Button
+        android:id="@+id/btnGraph"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Network graph" />
+
     <TextView
         android:id="@+id/txtLog"
         android:layout_width="match_parent"

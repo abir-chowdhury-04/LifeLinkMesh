@@ -1,6 +1,8 @@
 package com.abir2307055.lifelinkmesh.mesh;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import com.abir2307055.lifelinkmesh.data.AppDatabase;
 import com.abir2307055.lifelinkmesh.data.ChatMessage;
@@ -10,9 +12,11 @@ import com.abir2307055.lifelinkmesh.data.SosDao;
 import com.abir2307055.lifelinkmesh.model.Peer;
 import com.abir2307055.lifelinkmesh.nearby.NearbyManager;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,8 +25,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// One shared object for the whole app. It owns Nearby, the peer list, message saving
-// and relaying. Screens never talk to Nearby directly; they talk to the hub.
+// One shared object for the whole app. It owns Nearby, the peer list, message saving,
+// relaying and the network graph. Screens never talk to Nearby directly.
 public class MeshHub implements NearbyManager.Listener {
 
     // Screens showing chat implement this to be told about each new chat message.
@@ -35,12 +39,12 @@ public class MeshHub implements NearbyManager.Listener {
         void onSos(SosAlert alert);
     }
 
-    private static final int DEFAULT_TTL = 5;   // chat: up to 5 hops
-    private static final int SOS_TTL = 8;       // SOS reaches further than chat
+    private static final int DEFAULT_TTL = 5;              // chat: up to 5 hops
+    private static final int SOS_TTL = 8;                  // SOS reaches further than chat
+    private static final int TOPO_TTL = 5;                 // neighbour reports
+    private static final long TOPO_INTERVAL_MS = 10_000;   // repeat the report every 10 s
 
     private static MeshHub instance;
-
-    private final Context appContext;
 
     public static synchronized MeshHub getInstance(Context context) {
         if (instance == null) {
@@ -49,6 +53,7 @@ public class MeshHub implements NearbyManager.Listener {
         return instance;
     }
 
+    private final Context appContext;
     private final NearbyManager nearbyManager;
     private final MessageDao dao;
     private final SosDao sosDao;
@@ -61,6 +66,18 @@ public class MeshHub implements NearbyManager.Listener {
     private final List<Peer> peers = new ArrayList<>();
     // Duplicate cache: ids of messages this phone has already handled.
     private final Set<String> seenIds = ConcurrentHashMap.newKeySet();
+    // What this phone knows about who is linked to whom.
+    private final NetworkGraph graph = new NetworkGraph();
+    private final Handler handler = new Handler(Looper.getMainLooper());
+
+    // Sends my neighbour report every few seconds while the mesh is running.
+    private final Runnable topoTick = new Runnable() {
+        @Override
+        public void run() {
+            broadcastTopology();
+            handler.postDelayed(this, TOPO_INTERVAL_MS);
+        }
+    };
 
     private MeshHub(Context appContext) {
         this.appContext = appContext;
@@ -115,13 +132,17 @@ public class MeshHub implements NearbyManager.Listener {
 
     public void start() {
         nearbyManager.start();
+        handler.removeCallbacks(topoTick);
+        handler.postDelayed(topoTick, TOPO_INTERVAL_MS);
     }
 
     public void stop() {
+        handler.removeCallbacks(topoTick);
         nearbyManager.stop();
         synchronized (peers) {
             peers.clear();
         }
+        graph.clear();
     }
 
     // Forgets idle peers and restarts the search, without dropping live connections.
@@ -167,9 +188,11 @@ public class MeshHub implements NearbyManager.Listener {
         });
 
         MeshMessage wire = new MeshMessage(
-                id, MeshMessage.TYPE_CHAT, senderName, text, now, DEFAULT_TTL);
+                id, MeshMessage.TYPE_CHAT, senderName, text, now, DEFAULT_TTL)
+                .withPath(Collections.singletonList(senderName));
         try {
             nearbyManager.sendToAll(wire.toJson());
+            lightOutgoing(null);
         } catch (JSONException e) {
             onLog("Could not build message: " + e.getMessage());
         }
@@ -191,9 +214,11 @@ public class MeshHub implements NearbyManager.Listener {
         });
 
         MeshMessage wire = new MeshMessage(id, MeshMessage.TYPE_SOS, senderName, note,
-                now, SOS_TTL, category, hasLocation, latitude, longitude, accuracy);
+                now, SOS_TTL, category, hasLocation, latitude, longitude, accuracy)
+                .withPath(Collections.singletonList(senderName));
         try {
             nearbyManager.sendToAll(wire.toJson());
+            lightOutgoing(null);
         } catch (JSONException e) {
             onLog("Could not build SOS: " + e.getMessage());
         }
@@ -209,6 +234,79 @@ public class MeshHub implements NearbyManager.Listener {
         for (SosListener l : sosListeners) {
             l.onSos(alert);
         }
+    }
+
+    // ---- network graph ----
+
+    // Names of the phones I am connected to right now.
+    private List<String> connectedNames() {
+        List<String> names = new ArrayList<>();
+        synchronized (peers) {
+            for (Peer p : peers) {
+                if (Peer.STATUS_CONNECTED.equals(p.getStatus())) {
+                    names.add(p.getName());
+                }
+            }
+        }
+        return names;
+    }
+
+    // What the graph screen draws.
+    public NetworkGraph.Snapshot getGraphSnapshot() {
+        return graph.snapshot(nearbyManager.getLocalName(), connectedNames());
+    }
+
+    // Highlights my links to connected phones (except the one a message came from).
+    private void lightOutgoing(String excludedEndpointId) {
+        String me = nearbyManager.getLocalName();
+        synchronized (peers) {
+            for (Peer p : peers) {
+                if (Peer.STATUS_CONNECTED.equals(p.getStatus())
+                        && !p.getEndpointId().equals(excludedEndpointId)) {
+                    graph.light(me, p.getName());
+                }
+            }
+        }
+    }
+
+    // Tells every connected phone who I am linked to. Not saved, not logged.
+    private void broadcastTopology() {
+        List<String> connected = connectedNames();
+        if (connected.isEmpty()) {
+            return;
+        }
+        JSONArray array = new JSONArray();
+        for (String name : connected) {
+            array.put(name);
+        }
+        MeshMessage wire = new MeshMessage(
+                UUID.randomUUID().toString(), MeshMessage.TYPE_TOPO,
+                nearbyManager.getLocalName(), array.toString(),
+                System.currentTimeMillis(), TOPO_TTL);
+        seenIds.add(wire.id);
+        try {
+            nearbyManager.sendToAllExcept(null, wire.toJson(), true);
+        } catch (JSONException e) {
+            // nothing useful to show the user; the next report will try again
+        }
+    }
+
+    // A neighbour report arrived: remember it and pass it on.
+    private void handleTopology(String fromEndpointId, MeshMessage wire) {
+        if (!seenIds.add(wire.id)) {
+            return;
+        }
+        try {
+            JSONArray array = new JSONArray(wire.text);
+            List<String> neighbours = new ArrayList<>();
+            for (int i = 0; i < array.length(); i++) {
+                neighbours.add(array.getString(i));
+            }
+            graph.setReport(wire.senderName, neighbours);
+        } catch (JSONException e) {
+            return;
+        }
+        relay(fromEndpointId, wire, true);
     }
 
     // ---- events coming from NearbyManager: update state, then tell the screens ----
@@ -278,6 +376,10 @@ public class MeshHub implements NearbyManager.Listener {
         for (NearbyManager.Listener l : uiListeners) {
             l.onConnectionStateChanged(endpointId, state);
         }
+        // A link appeared or disappeared: tell the mesh straight away.
+        if (Peer.STATUS_CONNECTED.equals(state) || Peer.STATUS_DISCONNECTED.equals(state)) {
+            broadcastTopology();
+        }
     }
 
     // Raw text arrived from a peer: read the JSON, drop duplicates, save, show, relay.
@@ -285,12 +387,18 @@ public class MeshHub implements NearbyManager.Listener {
     public void onMessageReceived(String endpointId, String text) {
         try {
             MeshMessage wire = MeshMessage.fromJson(text);
+            if (MeshMessage.TYPE_TOPO.equals(wire.type)) {
+                handleTopology(endpointId, wire);
+                return;
+            }
             boolean isChat = MeshMessage.TYPE_CHAT.equals(wire.type);
             boolean isSos = MeshMessage.TYPE_SOS.equals(wire.type);
             if (!isChat && !isSos) {
                 onLog("Ignored message type " + wire.type);
                 return;
             }
+            // Every copy of a message, even a duplicate, shows which links it used.
+            graph.lightPath(wire.path, nearbyManager.getLocalName());
             // Layer 1: in-memory duplicate cache.
             if (!seenIds.add(wire.id)) {
                 onLog("Duplicate ignored (seen before)");
@@ -323,7 +431,7 @@ public class MeshHub implements NearbyManager.Listener {
                     onLog("Duplicate ignored (already saved)");
                     return;
                 }
-                relay(endpointId, wire);
+                relay(endpointId, wire, false);
             });
         } catch (JSONException e) {
             onLog("Unreadable message: " + e.getMessage());
@@ -331,17 +439,28 @@ public class MeshHub implements NearbyManager.Listener {
     }
 
     // Forwards a new message to everyone except the phone it came from.
-    private void relay(String fromEndpointId, MeshMessage wire) {
+    // quiet = true is used for neighbour reports (no log lines, no path, no highlight).
+    private void relay(String fromEndpointId, MeshMessage wire, boolean quiet) {
         if (wire.ttl <= 1) {
-            onLog("TTL used up, not relaying");
+            if (!quiet) {
+                onLog("TTL used up, not relaying");
+            }
             return;
         }
         try {
-            String json = wire.withTtl(wire.ttl - 1).toJson();
-            nearbyManager.sendToAllExcept(fromEndpointId, json);
-            onLog("Relayed with ttl " + (wire.ttl - 1));
+            MeshMessage next = wire.withTtl(wire.ttl - 1);
+            if (!quiet) {
+                next = next.appendToPath(nearbyManager.getLocalName());
+            }
+            nearbyManager.sendToAllExcept(fromEndpointId, next.toJson(), quiet);
+            if (!quiet) {
+                lightOutgoing(fromEndpointId);
+                onLog("Relayed with ttl " + (wire.ttl - 1));
+            }
         } catch (JSONException e) {
-            onLog("Could not relay: " + e.getMessage());
+            if (!quiet) {
+                onLog("Could not relay: " + e.getMessage());
+            }
         }
     }
 

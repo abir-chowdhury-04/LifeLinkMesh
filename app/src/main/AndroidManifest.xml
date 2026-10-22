@@ -41,6 +41,9 @@
         <activity
             android:name=".SosActivity"
             android:exported="false" />
+        <activity
+            android:name=".NetworkGraphActivity"
+            android:exported="false" />
         <service
             android:name=".mesh.MeshService"
             android:exported="false"
