@@ -48,6 +48,14 @@
             android:name=".mesh.MeshService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
+        <activity
+            android:name=".LogActivity"
+            android:exported="false" />
+
+        <provider
+            android:name=".mesh.MeshLogProvider"
+            android:authorities="com.abir2307055.lifelinkmesh.provider"
+            android:exported="false" />
     </application>
 
 </manifest>

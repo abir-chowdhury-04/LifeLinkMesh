@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnSos = findViewById(R.id.btnSos);
         Button btnRefresh = findViewById(R.id.btnRefresh);
         Button btnGraph = findViewById(R.id.btnGraph);
+        Button btnLog = findViewById(R.id.btnLog);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
@@ -102,6 +103,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
         btnGraph.setOnClickListener(v ->
                 startActivity(new Intent(this, NetworkGraphActivity.class)));
+
+        btnLog.setOnClickListener(v ->
+                startActivity(new Intent(this, LogActivity.class)));
     }
 
     @Override

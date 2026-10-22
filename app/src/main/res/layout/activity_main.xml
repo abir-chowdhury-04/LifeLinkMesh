@@ -70,6 +70,12 @@
         android:layout_height="wrap_content"
         android:text="Network graph" />
 
+    <Button
+        android:id="@+id/btnLog"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Message log" />
+
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/switchSaver"
         android:layout_width="wrap_content"
