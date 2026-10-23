@@ -25,6 +25,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.google.android.gms.nearby.connection.Payload;
 // One shared object for the whole app. It owns Nearby, the peer list, message saving,
 // relaying and the network graph. Screens never talk to Nearby directly.
 public class MeshHub implements NearbyManager.Listener {
@@ -71,6 +72,7 @@ public class MeshHub implements NearbyManager.Listener {
     private final Handler handler = new Handler(Looper.getMainLooper());
     // True when the battery is low: then only SOS is relayed.
     private volatile boolean batterySaver = false;
+    private final FileTransferManager fileTransfer;
 
     // Sends my neighbour report every few seconds while the mesh is running.
     private final Runnable topoTick = new Runnable() {
@@ -84,6 +86,7 @@ public class MeshHub implements NearbyManager.Listener {
     private MeshHub(Context appContext) {
         this.appContext = appContext;
         nearbyManager = new NearbyManager(appContext, this);
+        fileTransfer = new FileTransferManager(appContext, nearbyManager);
         AppDatabase db = AppDatabase.getInstance(appContext);
         dao = db.messageDao();
         sosDao = db.sosDao();
@@ -119,6 +122,10 @@ public class MeshHub implements NearbyManager.Listener {
 
     public String getLocalName() {
         return nearbyManager.getLocalName();
+    }
+    // Everything about file sharing lives in FileTransferManager.
+    public FileTransferManager files() {
+        return fileTransfer;
     }
 
     // Copies of the current peers, so a new screen can fill its list.
@@ -398,6 +405,9 @@ public class MeshHub implements NearbyManager.Listener {
     public void onMessageReceived(String endpointId, String text) {
         try {
             MeshMessage wire = MeshMessage.fromJson(text);
+            if (fileTransfer.handleControl(endpointId, wire)) {
+                return;   // a file handshake message, handled there
+            }
             if (MeshMessage.TYPE_TOPO.equals(wire.type)) {
                 handleTopology(endpointId, wire);
                 return;
@@ -480,6 +490,16 @@ public class MeshHub implements NearbyManager.Listener {
                 onLog("Could not relay: " + e.getMessage());
             }
         }
+    }
+    @Override
+    public void onFilePayloadReceived(String endpointId, Payload payload) {
+        fileTransfer.onFilePayload(payload);
+    }
+
+    @Override
+    public void onTransferUpdate(String endpointId, long payloadId, int status,
+                                 long bytesTransferred, long totalBytes) {
+        fileTransfer.onTransferUpdate(payloadId, status, bytesTransferred, totalBytes);
     }
 
     @Override

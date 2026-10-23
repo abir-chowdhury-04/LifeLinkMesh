@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnRefresh = findViewById(R.id.btnRefresh);
         Button btnGraph = findViewById(R.id.btnGraph);
         Button btnLog = findViewById(R.id.btnLog);
+        Button btnFiles = findViewById(R.id.btnFiles);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
@@ -106,6 +107,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
         btnLog.setOnClickListener(v ->
                 startActivity(new Intent(this, LogActivity.class)));
+
+        btnFiles.setOnClickListener(v ->
+                startActivity(new Intent(this, FileActivity.class)));
     }
 
     @Override
@@ -219,6 +223,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             list.add(Manifest.permission.NEARBY_WIFI_DEVICES);
             list.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {   // Android 9 and below
+            list.add(Manifest.permission.READ_EXTERNAL_STORAGE);
         }
         return list.toArray(new String[0]);
     }

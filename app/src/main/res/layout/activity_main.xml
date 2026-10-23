@@ -76,6 +76,12 @@
         android:layout_height="wrap_content"
         android:text="Message log" />
 
+    <Button
+        android:id="@+id/btnFiles"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Files" />
+
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/switchSaver"
         android:layout_width="wrap_content"

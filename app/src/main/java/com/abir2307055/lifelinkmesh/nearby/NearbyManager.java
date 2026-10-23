@@ -23,6 +23,7 @@ import com.google.android.gms.nearby.connection.Payload;
 import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
+import android.os.ParcelFileDescriptor;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
@@ -45,6 +46,10 @@ public class NearbyManager {
         void onConnectionStateChanged(String endpointId, String state);
         void onMessageReceived(String endpointId, String text);
         void onLog(String message);
+        default void onFilePayloadReceived(String endpointId, Payload payload) { }
+
+        default void onTransferUpdate(String endpointId, long payloadId, int status,
+                                      long bytesTransferred, long totalBytes) { }
     }
 
     private final ConnectionsClient client;
@@ -146,6 +151,21 @@ public class NearbyManager {
     public void rejectConnection(String endpointId) {
         client.rejectConnection(endpointId);
     }
+    // Sends a short text to ONE phone (used for the file handshake).
+    public void sendTextTo(String endpointId, String text) {
+        client.sendPayload(endpointId,
+                        Payload.fromBytes(text.getBytes(StandardCharsets.UTF_8)))
+                .addOnFailureListener(e -> log("Send failed: " + e.getMessage()));
+    }
+
+    public Payload newFilePayload(ParcelFileDescriptor pfd) {
+        return Payload.fromFile(pfd);
+    }
+
+    public void sendPayloadTo(String endpointId, Payload payload) {
+        client.sendPayload(endpointId, payload)
+                .addOnFailureListener(e -> log("Send failed: " + e.getMessage()));
+    }
 
     // Sends a short text to every connected phone.
     // Sends a short text to every connected phone.
@@ -194,6 +214,7 @@ public class NearbyManager {
     }
 
     // Receives data from connected phones.
+    // Receives data from connected phones.
     private final PayloadCallback payloadCallback = new PayloadCallback() {
         @Override
         public void onPayloadReceived(@NonNull String endpointId, @NonNull Payload payload) {
@@ -203,12 +224,16 @@ public class NearbyManager {
                     listener.onMessageReceived(endpointId,
                             new String(bytes, StandardCharsets.UTF_8));
                 }
+            } else if (payload.getType() == Payload.Type.FILE) {
+                listener.onFilePayloadReceived(endpointId, payload);
             }
         }
 
         @Override
         public void onPayloadTransferUpdate(@NonNull String endpointId,
                                             @NonNull PayloadTransferUpdate update) {
+            listener.onTransferUpdate(endpointId, update.getPayloadId(), update.getStatus(),
+                    update.getBytesTransferred(), update.getTotalBytes());
         }
     };
 

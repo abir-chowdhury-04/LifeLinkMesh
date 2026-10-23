@@ -13,7 +13,10 @@ public class MeshMessage {
 
     public static final String TYPE_CHAT = "CHAT";
     public static final String TYPE_SOS = "SOS";
-    public static final String TYPE_TOPO = "TOPO";   // "these are my neighbours"
+    public static final String TYPE_TOPO = "TOPO";// "these are my neighbours"
+    public static final String TYPE_FILE_OFFER = "FILE_OFFER";   // "I want to send you a file"
+    public static final String TYPE_FILE_REPLY = "FILE_REPLY";   // "accepted" or "declined"
+    public static final String TYPE_FILE_START = "FILE_START";   // "the file payload has this id"
 
     public final String id;
     public final String type;
