@@ -244,9 +244,6 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
             list.add(Manifest.permission.NEARBY_WIFI_DEVICES);
             list.add(Manifest.permission.POST_NOTIFICATIONS);
         }
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {   // Android 9 and below
-            list.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-        }
         return list.toArray(new String[0]);
     }
 

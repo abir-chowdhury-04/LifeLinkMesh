@@ -9,6 +9,10 @@ import android.os.Looper;
 import android.webkit.MimeTypeMap;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import androidx.core.content.ContextCompat;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -45,6 +49,10 @@ public class FileActivity extends AppCompatActivity implements FileTransferManag
     private String lastPeerSignature = "";
     private final Set<String> shownOffers = new HashSet<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
+    // Old phones (Android 9 and below) need this to read the file Nearby saved in Downloads.
+    private final ActivityResultLauncher<String> storagePermission =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(),
+                    granted -> { });
 
     // Keeps the "connected phones" list up to date while this screen is visible.
     private final Runnable tick = new Runnable() {
@@ -88,6 +96,11 @@ public class FileActivity extends AppCompatActivity implements FileTransferManag
     @Override
     protected void onStart() {
         super.onStart();
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
+                && ContextCompat.checkSelfPermission(this,
+                Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            storagePermission.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
+        }
         files.addListener(this);
         handler.post(tick);
         refreshReceived();
