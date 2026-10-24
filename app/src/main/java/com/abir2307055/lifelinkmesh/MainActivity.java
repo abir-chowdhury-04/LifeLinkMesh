@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.graphics.Color;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -36,6 +37,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     private MeshHub hub;
     private final List<String> logLines = new ArrayList<>();
     private SwitchCompat switchSaver;
+    private SwitchCompat switchEmergency;
 
     private final ActivityResultLauncher<String[]> permissionLauncher =
             registerForActivityResult(
@@ -110,6 +112,16 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
         btnFiles.setOnClickListener(v ->
                 startActivity(new Intent(this, FileActivity.class)));
+
+        switchEmergency = findViewById(R.id.switchEmergency);
+        switchEmergency.setOnCheckedChangeListener((button, checked) -> {
+            updateEmergencyUi(checked);
+            if (button.isPressed()) {   // only when the user taps it
+                hub.setEmergencyMode(checked, checked
+                        ? "turned on by the user: connecting and accepting automatically"
+                        : "turned off by the user");
+            }
+        });
     }
 
     @Override
@@ -117,6 +129,8 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         super.onResume();
         updateStatus();
         switchSaver.setChecked(hub.isBatterySaver());
+        switchEmergency.setChecked(hub.isEmergencyMode());
+        updateEmergencyUi(hub.isEmergencyMode());
     }
 
     @Override
@@ -185,8 +199,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     public void onConnectionStateChanged(String endpointId, String state) {
         runOnUiThread(() -> {
             if (!peerAdapter.updateStatus(endpointId, state)) {
-                peerAdapter.addIfAbsent(
-                        new Peer(endpointId, "Unknown (" + endpointId + ")", state));
+                peerAdapter.setPeers(hub.getPeers());   // the hub knows the real name
             }
         });
     }
@@ -199,6 +212,13 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     @Override
     public void onLog(String message) {
         runOnUiThread(() -> appendLog(message));
+    }
+
+    // Makes emergency mode impossible to miss: red text when it is on.
+    private void updateEmergencyUi(boolean on) {
+        switchEmergency.setText(on ? "EMERGENCY MODE: ON (connecting automatically)"
+                : "Emergency mode: OFF");
+        switchEmergency.setTextColor(on ? Color.RED : Color.GRAY);
     }
 
     private void appendLog(String message) {

@@ -90,6 +90,7 @@ public class SosActivity extends AppCompatActivity
         String category = checked.getText().toString();
         String note = editSosNote.getText().toString().trim();
         boolean hasLocation = bestLocation != null;
+        hub.setEmergencyMode(true, "turned on because an SOS was sent");
 
         hub.sendSos(category, note, hasLocation,
                 hasLocation ? bestLocation.getLatitude() : 0,

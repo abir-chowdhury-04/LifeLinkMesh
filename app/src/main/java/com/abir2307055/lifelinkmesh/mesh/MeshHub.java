@@ -73,6 +73,8 @@ public class MeshHub implements NearbyManager.Listener {
     // True when the battery is low: then only SOS is relayed.
     private volatile boolean batterySaver = false;
     private final FileTransferManager fileTransfer;
+    // True in emergency mode: connect to nearby phones and accept connections automatically.
+    private volatile boolean emergencyMode = false;
 
     // Sends my neighbour report every few seconds while the mesh is running.
     private final Runnable topoTick = new Runnable() {
@@ -177,6 +179,31 @@ public class MeshHub implements NearbyManager.Listener {
     public void setBatterySaver(boolean on, String reason) {
         batterySaver = on;
         onLog("Battery saver " + (on ? "ON" : "OFF") + ": " + reason);
+    }
+    public boolean isEmergencyMode() {
+        return emergencyMode;
+    }
+
+    public void setEmergencyMode(boolean on, String reason) {
+        emergencyMode = on;
+        onLog("Emergency mode " + (on ? "ON" : "OFF") + ": " + reason);
+        if (!on) {
+            return;
+        }
+        // Connect to everyone we can already see but are not connected to.
+        List<Peer> idle = new ArrayList<>();
+        synchronized (peers) {
+            for (Peer p : peers) {
+                String s = p.getStatus();
+                if (Peer.STATUS_DISCOVERED.equals(s) || Peer.STATUS_DISCONNECTED.equals(s)
+                        || Peer.STATUS_FAILED.equals(s)) {
+                    idle.add(new Peer(p.getEndpointId(), p.getName(), s));
+                }
+            }
+        }
+        for (Peer p : idle) {
+            connectTo(p.getEndpointId(), p.getName());
+        }
     }
 
     public void connectTo(String endpointId, String name) {
@@ -341,6 +368,7 @@ public class MeshHub implements NearbyManager.Listener {
 
     @Override
     public void onEndpointFound(String endpointId, String name) {
+        boolean autoConnect;
         synchronized (peers) {
             Peer existing = find(endpointId);
             if (existing == null) {
@@ -349,9 +377,16 @@ public class MeshHub implements NearbyManager.Listener {
                     || Peer.STATUS_FAILED.equals(existing.getStatus())) {
                 existing.setStatus(Peer.STATUS_DISCOVERED);   // seen again after it dropped
             }
+            Peer now = find(endpointId);
+            autoConnect = emergencyMode && now != null
+                    && Peer.STATUS_DISCOVERED.equals(now.getStatus());
         }
         for (NearbyManager.Listener l : uiListeners) {
             l.onEndpointFound(endpointId, name);
+        }
+        if (autoConnect) {
+            onLog("Emergency mode: connecting to " + name);
+            connectTo(endpointId, name);
         }
     }
 
@@ -375,6 +410,12 @@ public class MeshHub implements NearbyManager.Listener {
             if (find(endpointId) == null) {
                 peers.add(new Peer(endpointId, name, Peer.STATUS_CONNECTING));
             }
+        }
+        if (emergencyMode) {
+            // No dialog: accept straight away.
+            onLog("Emergency mode: accepting " + name);
+            nearbyManager.acceptConnection(endpointId);
+            return;
         }
         for (NearbyManager.Listener l : uiListeners) {
             l.onConnectionRequest(endpointId, name, digits, incoming);

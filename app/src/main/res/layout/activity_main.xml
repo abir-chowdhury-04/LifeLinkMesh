@@ -83,6 +83,12 @@
         android:text="Files" />
 
     <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchEmergency"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Emergency mode: OFF" />
+
+    <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/switchSaver"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
