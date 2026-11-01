@@ -37,6 +37,8 @@ public class NearbyManager {
     private static final Strategy STRATEGY = Strategy.P2P_CLUSTER;
     // How long the "higher-name" phone waits so the other phone can go first.
     private static final long TIE_BREAK_DELAY_MS = 3000;
+    // Endpoints Nearby has told us are gone (their ids are dead).
+    private final Set<String> lostEndpoints = ConcurrentHashMap.newKeySet();
 
     // How NearbyManager reports events back to the screen.
     public interface Listener {
@@ -98,6 +100,7 @@ public class NearbyManager {
         client.stopAllEndpoints();
         initiatedEndpoints.clear();
         connectedEndpoints.clear();
+        lostEndpoints.clear();
         log("Mesh stopped: advertising, discovery and all connections");
     }
 
@@ -117,6 +120,8 @@ public class NearbyManager {
 
     // Tie-break: if both phones tap each other at once, only one should send the request.
     // The phone with the smaller name goes first; the other waits and checks.
+    // Tie-break: if both phones tap each other at once, only one should send the request.
+    // The phone with the smaller name goes first; the other waits and checks.
     public void connectTo(String endpointId, String remoteName) {
         boolean iGoFirst = localName.compareTo(remoteName) <= 0;
         if (iGoFirst) {
@@ -125,7 +130,12 @@ public class NearbyManager {
         }
         log("Waiting so " + remoteName + " can go first");
         handler.postDelayed(() -> {
-            if (initiatedEndpoints.contains(endpointId)) {
+            if (lostEndpoints.contains(endpointId)) {
+                // The other phone went away (or restarted) while we waited: its id is dead.
+                log(remoteName + " went away, not sending");
+                listener.onConnectionStateChanged(endpointId, Peer.STATUS_FAILED);
+                listener.onEndpointLost(endpointId);
+            } else if (initiatedEndpoints.contains(endpointId)) {
                 log("Other phone already started, not sending");
             } else {
                 sendRequest(endpointId);
@@ -139,6 +149,9 @@ public class NearbyManager {
                 .addOnFailureListener(e -> {
                     log("Request failed: " + e.getMessage());
                     listener.onConnectionStateChanged(endpointId, Peer.STATUS_FAILED);
+                    if (lostEndpoints.contains(endpointId)) {
+                        listener.onEndpointLost(endpointId);   // remove the dead row
+                    }
                 });
     }
 
@@ -243,12 +256,14 @@ public class NearbyManager {
                 @Override
                 public void onEndpointFound(@NonNull String endpointId,
                                             @NonNull DiscoveredEndpointInfo info) {
+                    lostEndpoints.remove(endpointId);
                     log("Found " + info.getEndpointName());
                     listener.onEndpointFound(endpointId, info.getEndpointName());
                 }
 
                 @Override
                 public void onEndpointLost(@NonNull String endpointId) {
+                    lostEndpoints.remove(endpointId);
                     log("Lost " + endpointId);
                     listener.onEndpointLost(endpointId);
                 }

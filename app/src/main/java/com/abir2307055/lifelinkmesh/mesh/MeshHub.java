@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.Map;
 
 import com.google.android.gms.nearby.connection.Payload;
 // One shared object for the whole app. It owns Nearby, the peer list, message saving,
@@ -75,6 +76,8 @@ public class MeshHub implements NearbyManager.Listener {
     private final FileTransferManager fileTransfer;
     // True in emergency mode: connect to nearby phones and accept connections automatically.
     private volatile boolean emergencyMode = false;
+    // Names we have heard for endpoints, so a state change never needs to invent one.
+    private final Map<String, String> endpointNames = new ConcurrentHashMap<>();
 
     // Sends my neighbour report every few seconds while the mesh is running.
     private final Runnable topoTick = new Runnable() {
@@ -368,6 +371,7 @@ public class MeshHub implements NearbyManager.Listener {
 
     @Override
     public void onEndpointFound(String endpointId, String name) {
+        endpointNames.put(endpointId, name);
         boolean autoConnect;
         synchronized (peers) {
             Peer existing = find(endpointId);
@@ -394,8 +398,13 @@ public class MeshHub implements NearbyManager.Listener {
     public void onEndpointLost(String endpointId) {
         synchronized (peers) {
             Peer p = find(endpointId);
-            if (p != null && Peer.STATUS_DISCOVERED.equals(p.getStatus())) {
-                peers.remove(p);
+            if (p != null) {
+                String s = p.getStatus();
+                // A dead id can only be removed if we are not connected through it.
+                if (Peer.STATUS_DISCOVERED.equals(s) || Peer.STATUS_FAILED.equals(s)
+                        || Peer.STATUS_DISCONNECTED.equals(s)) {
+                    peers.remove(p);
+                }
             }
         }
         for (NearbyManager.Listener l : uiListeners) {
@@ -406,6 +415,7 @@ public class MeshHub implements NearbyManager.Listener {
     @Override
     public void onConnectionRequest(String endpointId, String name,
                                     String digits, boolean incoming) {
+        endpointNames.put(endpointId, name);
         synchronized (peers) {
             if (find(endpointId) == null) {
                 peers.add(new Peer(endpointId, name, Peer.STATUS_CONNECTING));
@@ -428,9 +438,14 @@ public class MeshHub implements NearbyManager.Listener {
             Peer p = find(endpointId);
             if (p != null) {
                 p.setStatus(state);
-            } else {
-                peers.add(new Peer(endpointId, "Unknown (" + endpointId + ")", state));
+            } else if (Peer.STATUS_CONNECTING.equals(state)
+                    || Peer.STATUS_CONNECTED.equals(state)) {
+                // A live connection for a phone we have no row for: use the name we heard.
+                String name = endpointNames.get(endpointId);
+                peers.add(new Peer(endpointId,
+                        name != null ? name : "Unknown (" + endpointId + ")", state));
             }
+            // A late "disconnected" or "failed" for a phone we no longer list is ignored.
         }
         for (NearbyManager.Listener l : uiListeners) {
             l.onConnectionStateChanged(endpointId, state);

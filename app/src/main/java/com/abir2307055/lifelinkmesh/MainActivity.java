@@ -171,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
     @Override
     public void onEndpointLost(String endpointId) {
-        runOnUiThread(() -> peerAdapter.removeIfDiscovered(endpointId));
+        runOnUiThread(() -> peerAdapter.setPeers(hub.getPeers()));
     }
 
     @Override
