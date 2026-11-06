@@ -24,6 +24,7 @@ import com.google.android.gms.nearby.connection.PayloadCallback;
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate;
 import com.google.android.gms.nearby.connection.Strategy;
 import android.os.ParcelFileDescriptor;
+import com.abir2307055.lifelinkmesh.data.ProfileStore;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
@@ -56,7 +57,11 @@ public class NearbyManager {
 
     private final ConnectionsClient client;
     private final String serviceId;
-    private final String localName;
+    private final Context appContext;
+    // The number stays the same for the whole app run, so our identity does not jump around.
+    private final int suffix = 100 + new Random().nextInt(900);
+    // Not final: it is rebuilt in start(), so a name the user changed is used.
+    private volatile String localName;
     private final Handler handler = new Handler(Looper.getMainLooper());
     // Endpoints for which a connection has already been initiated (by either side).
     private final Set<String> initiatedEndpoints = ConcurrentHashMap.newKeySet();
@@ -67,10 +72,10 @@ public class NearbyManager {
     private boolean running = false;   // true between start() and stop()
 
     public NearbyManager(Context context, Listener listener) {
-        Context appContext = context.getApplicationContext();
+        this.appContext = context.getApplicationContext();
         this.client = Nearby.getConnectionsClient(appContext);
         this.serviceId = appContext.getPackageName();
-        this.localName = Build.MODEL + " #" + (100 + new Random().nextInt(900));
+        this.localName = ProfileStore.loadName(appContext) + " #" + suffix;
         this.listener = listener;
     }
 
@@ -80,6 +85,8 @@ public class NearbyManager {
 
     public void start() {
         running = true;
+        // Use the newest chosen name each time the mesh starts.
+        localName = ProfileStore.loadName(appContext) + " #" + suffix;
         AdvertisingOptions advertisingOptions =
                 new AdvertisingOptions.Builder().setStrategy(STRATEGY).build();
         client.startAdvertising(localName, serviceId, connectionLifecycleCallback, advertisingOptions)

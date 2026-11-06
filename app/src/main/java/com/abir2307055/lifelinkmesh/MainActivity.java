@@ -20,6 +20,15 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.text.InputFilter;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+
+import com.abir2307055.lifelinkmesh.data.ProfileStore;
+
 import com.abir2307055.lifelinkmesh.mesh.MeshHub;
 import com.abir2307055.lifelinkmesh.model.Peer;
 import com.abir2307055.lifelinkmesh.nearby.NearbyManager;
@@ -32,6 +41,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements NearbyManager.Listener {
 
     private TextView txtStatus;
+    private TextView txtDevice;
     private TextView txtLog;
     private PeerAdapter peerAdapter;
     private MeshHub hub;
@@ -49,7 +59,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        TextView txtDevice = findViewById(R.id.txtDevice);
+        txtDevice = findViewById(R.id.txtDevice);
         txtStatus = findViewById(R.id.txtStatus);
         txtLog = findViewById(R.id.txtLog);
         Button btnGrant = findViewById(R.id.btnGrant);
@@ -74,9 +84,8 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
             }
         });
 
-        txtDevice.setText("Android " + Build.VERSION.RELEASE
-                + " (API " + Build.VERSION.SDK_INT + ")\n"
-                + "Name: " + hub.getLocalName());
+        showDevice();
+        txtDevice.setOnClickListener(v -> showNameDialog());
 
         peerAdapter = new PeerAdapter();
         peerAdapter.setOnPeerClickListener(this::onPeerClicked);
@@ -130,6 +139,50 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
                         : "turned off by the user");
             }
         });
+    }
+
+    private void showDevice() {
+        String chosen = ProfileStore.loadName(this);
+        String text = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")\n"
+                + "Name: " + hub.getLocalName() + "  (tap to change)";
+        // The running name only changes when the mesh starts, so tell the user.
+        if (!hub.getLocalName().startsWith(chosen + " #")) {
+            text += "\nNew name \"" + chosen + "\" is used the next time you start the mesh";
+        }
+        txtDevice.setText(text);
+    }
+
+    private void showNameDialog() {
+        EditText input = new EditText(this);
+        input.setHint("Your name, for example Rahim");
+        input.setSingleLine(true);
+        input.setFilters(new InputFilter[]{
+                new InputFilter.LengthFilter(ProfileStore.MAX_NAME_LENGTH)});
+        input.setText(ProfileStore.loadName(this));
+        input.setSelection(input.getText().length());
+
+        // A little padding so the field does not touch the dialog edges.
+        FrameLayout box = new FrameLayout(this);
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(input);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Change your name")
+                .setMessage("Other phones see this name. A number is added to keep it unique. "
+                        + "It is used the next time you start the mesh.")
+                .setView(box)
+                .setPositiveButton("Save", (dialog, which) -> {
+                    String name = ProfileStore.cleanName(input.getText().toString());
+                    if (name.isEmpty()) {
+                        Toast.makeText(this, "The name cannot be empty", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ProfileStore.saveName(this, name);
+                    showDevice();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     @Override
