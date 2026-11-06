@@ -91,20 +91,20 @@ public class CloudSync {
 
     private static void push(Context app, FirebaseUser user, List<SosAlert> pending,
                              Listener listener) {
-        // Path "<alert id>" -> data. The same id overwrites, so a repeat never duplicates.
+        // Field-by-field paths ("<id>/category", ...), so a re-upload from another phone
+        // never erases the "status" that a coordinator may have set on the same alert.
         Map<String, Object> updates = new HashMap<>();
         for (SosAlert a : pending) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("senderName", a.senderName);
-            item.put("category", a.category);
-            item.put("note", a.note);
-            item.put("timestamp", a.timestamp);
-            item.put("hasLocation", a.hasLocation);
-            item.put("latitude", a.latitude);
-            item.put("longitude", a.longitude);
-            item.put("accuracy", (double) a.accuracy);
-            item.put("uploadedBy", user.getUid());   // the gateway phone's account
-            updates.put(a.id, item);
+            String p = a.id + "/";
+            updates.put(p + "senderName", a.senderName);
+            updates.put(p + "category", a.category);
+            updates.put(p + "note", a.note);
+            updates.put(p + "timestamp", a.timestamp);
+            updates.put(p + "hasLocation", a.hasLocation);
+            updates.put(p + "latitude", a.latitude);
+            updates.put(p + "longitude", a.longitude);
+            updates.put(p + "accuracy", (double) a.accuracy);
+            updates.put(p + "uploadedBy", user.getUid());   // the gateway phone's account
         }
         final int count = pending.size();
         FirebaseDatabase.getInstance().getReference(SOS_PATH)

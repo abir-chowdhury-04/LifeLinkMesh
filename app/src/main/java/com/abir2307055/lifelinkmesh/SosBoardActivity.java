@@ -22,6 +22,11 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
+import androidx.appcompat.app.AlertDialog;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,7 +48,7 @@ public class SosBoardActivity extends AppCompatActivity {
         RecyclerView recyclerBoard = findViewById(R.id.recyclerBoard);
 
         adapter = new SosAdapter();
-        adapter.setOnSosClickListener(this::openMap);
+        adapter.setOnSosClickListener(this::showActions);
         recyclerBoard.setLayoutManager(new LinearLayoutManager(this));
         recyclerBoard.setAdapter(adapter);
     }
@@ -96,7 +101,7 @@ public class SosBoardActivity extends AppCompatActivity {
                     }
                 }
                 adapter.setAlerts(list);   // sorts by priority, then newest first
-                txtBoardStatus.setText("Live: " + list.size() + " alert(s) in the cloud");
+                txtBoardStatus.setText("Live: " + list.size() + " open alert(s)");
             }
 
             @Override
@@ -120,6 +125,11 @@ public class SosBoardActivity extends AppCompatActivity {
         if (id == null) {
             return null;
         }
+        // Resolved cases are hidden from the board (they stay in the cloud as history).
+        String status = s.child("status").getValue(String.class);
+        if ("resolved".equals(status)) {
+            return null;
+        }
         String sender = s.child("senderName").getValue(String.class);
         String category = s.child("category").getValue(String.class);
         String note = s.child("note").getValue(String.class);
@@ -139,6 +149,44 @@ public class SosBoardActivity extends AppCompatActivity {
                 longitude == null ? 0 : longitude,
                 accuracy == null ? 0f : accuracy.floatValue(),
                 false);
+    }
+
+    // Tapping an alert offers two actions.
+    private void showActions(SosAlert alert) {
+        String[] choices = {"Open map", "Mark resolved"};
+        new AlertDialog.Builder(this)
+                .setTitle(alert.category + " SOS from " + alert.senderName)
+                .setItems(choices, (dialog, which) -> {
+                    if (which == 0) {
+                        openMap(alert);
+                    } else {
+                        markResolved(alert);
+                    }
+                })
+                .show();
+    }
+
+    // Writes the status next to the alert. The live listener then removes it from every board.
+    private void markResolved(SosAlert alert) {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "Sign in first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("status", "resolved");
+        updates.put("resolvedBy", user.getUid());
+        updates.put("resolvedAt", System.currentTimeMillis());
+        FirebaseDatabase.getInstance().getReference("sos").child(alert.id)
+                .updateChildren(updates)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        Toast.makeText(this, "Marked as resolved", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, "Failed: " + task.getException().getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     // Same map opening as the SOS screen (implicit Intent).
