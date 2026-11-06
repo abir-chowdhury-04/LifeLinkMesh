@@ -29,6 +29,7 @@ import com.abir2307055.lifelinkmesh.data.SosAlert;
 import com.abir2307055.lifelinkmesh.data.SosDao;
 import com.abir2307055.lifelinkmesh.mesh.MeshHub;
 import com.abir2307055.lifelinkmesh.ui.SosAdapter;
+import com.abir2307055.lifelinkmesh.data.ContactStore;
 
 import java.util.List;
 import java.util.Locale;
@@ -63,6 +64,7 @@ public class SosActivity extends AppCompatActivity
         Button btnSendSos = findViewById(R.id.btnSendSos);
         Button btnClearSos = findViewById(R.id.btnClearSos);
         btnClearSos.setOnClickListener(v -> confirmClear());
+        Button btnEmailContacts = findViewById(R.id.btnEmailContacts);
         RecyclerView recyclerSos = findViewById(R.id.recyclerSos);
 
         adapter = new SosAdapter();
@@ -72,6 +74,8 @@ public class SosActivity extends AppCompatActivity
 
         btnSendSos.setOnClickListener(v -> sendSos());
         loadAlerts();
+
+        btnEmailContacts.setOnClickListener(v -> emailContacts());
     }
 
     private void loadAlerts() {
@@ -135,6 +139,48 @@ public class SosActivity extends AppCompatActivity
             startActivity(new Intent(Intent.ACTION_VIEW, uri));
         } catch (ActivityNotFoundException e) {
             Toast.makeText(this, "No map app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Opens the email app with a prefilled SOS message for the saved emergency contacts.
+    // The user taps Send; nothing is sent silently.
+    private void emailContacts() {
+        List<String> contacts = ContactStore.load(this);
+        if (contacts.isEmpty()) {
+            Toast.makeText(this, "Add an emergency contact first", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(this, ContactsActivity.class));
+            return;
+        }
+
+        RadioButton checked = findViewById(radioCategory.getCheckedRadioButtonId());
+        String category = checked.getText().toString();
+        String note = editSosNote.getText().toString().trim();
+
+        StringBuilder body = new StringBuilder();
+        body.append("I need help. Category: ").append(category).append(".\n");
+        if (!note.isEmpty()) {
+            body.append("Note: ").append(note).append("\n");
+        }
+        if (bestLocation != null) {
+            body.append(String.format(Locale.US,
+                    "My location: https://maps.google.com/?q=%.6f,%.6f (accuracy about %.0f m)\n",
+                    bestLocation.getLatitude(), bestLocation.getLongitude(),
+                    bestLocation.getAccuracy()));
+        } else {
+            body.append("My location is not available yet.\n");
+        }
+        body.append("Sent from LifeLink Mesh.");
+
+        // "mailto:" limits the choice to email apps.
+        Intent intent = new Intent(Intent.ACTION_SENDTO);
+        intent.setData(Uri.parse("mailto:"));
+        intent.putExtra(Intent.EXTRA_EMAIL, contacts.toArray(new String[0]));
+        intent.putExtra(Intent.EXTRA_SUBJECT, "SOS: " + category);
+        intent.putExtra(Intent.EXTRA_TEXT, body.toString());
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "No email app found", Toast.LENGTH_LONG).show();
         }
     }
 
