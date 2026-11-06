@@ -36,7 +36,7 @@
         android:id="@+id/btnRestoreContacts"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Restore from cloud" />
+        android:text="Restore contacts and name from cloud" />
 
     <TextView
         android:id="@+id/txtContactsStatus"

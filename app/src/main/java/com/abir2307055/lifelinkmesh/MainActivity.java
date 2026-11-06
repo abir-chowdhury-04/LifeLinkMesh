@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.graphics.Color;
+import com.abir2307055.lifelinkmesh.cloud.ProfileSync;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -180,6 +181,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
                     }
                     ProfileStore.saveName(this, name);
                     showDevice();
+                    ProfileSync.backupName(name, message ->
+                            runOnUiThread(() ->
+                                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()));
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
@@ -188,6 +192,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     @Override
     protected void onResume() {
         super.onResume();
+        showDevice();
         updateStatus();
         switchSaver.setChecked(hub.isBatterySaver());
         switchEmergency.setChecked(hub.isEmergencyMode());

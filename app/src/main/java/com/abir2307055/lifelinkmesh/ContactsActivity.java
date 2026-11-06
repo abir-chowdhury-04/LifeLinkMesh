@@ -5,6 +5,8 @@ import android.util.Patterns;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import com.abir2307055.lifelinkmesh.data.ProfileStore;
+import com.google.firebase.firestore.SetOptions;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -89,7 +91,7 @@ public class ContactsActivity extends AppCompatActivity {
                 return;
             }
             FirebaseFirestore.getInstance().collection(USERS).document(user.getUid())
-                    .set(doc)
+                    .set(doc, SetOptions.merge())
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
                             txtStatus.setText("Saved on this phone and backed up to the cloud");
@@ -120,6 +122,12 @@ public class ContactsActivity extends AppCompatActivity {
                         if (!task.isSuccessful()) {
                             txtStatus.setText("Restore failed: " + task.getException().getMessage());
                             return;
+                        }
+                        // The name is restored too (the mesh uses it the next time it starts).
+                        String cloudName = task.getResult().exists()
+                                ? task.getResult().getString("displayName") : null;
+                        if (cloudName != null && !cloudName.isEmpty()) {
+                            ProfileStore.saveName(this, cloudName);
                         }
                         Object raw = task.getResult().exists()
                                 ? task.getResult().get(FIELD_EMAILS) : null;
