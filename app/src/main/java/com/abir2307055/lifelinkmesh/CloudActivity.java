@@ -6,22 +6,11 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.abir2307055.lifelinkmesh.data.AppDatabase;
-import com.abir2307055.lifelinkmesh.data.SosAlert;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.abir2307055.lifelinkmesh.cloud.CloudSync;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,7 +24,6 @@ public class CloudActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private TextView txtUser;
     private TextView txtStatus;
-    private TextView txtData;
     private EditText editEmail;
     private EditText editPassword;
 
@@ -51,7 +39,6 @@ public class CloudActivity extends AppCompatActivity {
 
         txtUser = findViewById(R.id.txtCloudUser);
         txtStatus = findViewById(R.id.txtCloudStatus);
-        txtData = findViewById(R.id.txtCloudData);
         editEmail = findViewById(R.id.editEmail);
         editPassword = findViewById(R.id.editPassword);
         Button btnSignUp = findViewById(R.id.btnSignUp);
@@ -60,7 +47,6 @@ public class CloudActivity extends AppCompatActivity {
         Button btnSendVerify = findViewById(R.id.btnSendVerify);
         Button btnCheckVerified = findViewById(R.id.btnCheckVerified);
         Button btnUploadSos = findViewById(R.id.btnUploadSos);
-        Button btnReadSos = findViewById(R.id.btnReadSos);
 
         btnSignUp.setOnClickListener(v -> signUp());
         btnSignIn.setOnClickListener(v -> signIn());
@@ -72,7 +58,6 @@ public class CloudActivity extends AppCompatActivity {
         btnSendVerify.setOnClickListener(v -> sendVerification());
         btnCheckVerified.setOnClickListener(v -> checkVerified());
         btnUploadSos.setOnClickListener(v -> uploadSos());
-        btnReadSos.setOnClickListener(v -> readSos());
 
         showUser();
     }
@@ -174,41 +159,5 @@ public class CloudActivity extends AppCompatActivity {
     private void uploadSos() {
         txtStatus.setText("Uploading...");
         CloudSync.syncNow(this, message -> runOnUiThread(() -> txtStatus.setText(message)));
-    }
-
-    private void readSos() {
-        if (auth.getCurrentUser() == null) {
-            // Still try, to show that the rules deny a signed-out user.
-            txtStatus.setText("Reading while signed out (rules should deny this)...");
-        } else {
-            txtStatus.setText("Reading...");
-        }
-        FirebaseDatabase.getInstance().getReference(SOS_PATH)
-                .orderByChild("timestamp")
-                .limitToLast(10)
-                .addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot snapshot) {
-                        List<String> lines = new ArrayList<>();
-                        for (DataSnapshot child : snapshot.getChildren()) {
-                            String category = child.child("category").getValue(String.class);
-                            String sender = child.child("senderName").getValue(String.class);
-                            String note = child.child("note").getValue(String.class);
-                            lines.add(category + " from " + sender + ": " + note);
-                        }
-                        // The query returns oldest first, so show the newest at the top.
-                        StringBuilder sb = new StringBuilder();
-                        for (int i = lines.size() - 1; i >= 0; i--) {
-                            sb.append(lines.get(i)).append("\n\n");
-                        }
-                        txtData.setText(sb.length() == 0 ? "(nothing in the cloud yet)" : sb.toString());
-                        txtStatus.setText("Read " + lines.size() + " SOS alert(s) from the cloud");
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError error) {
-                        txtStatus.setText("Read failed: " + error.getMessage());
-                    }
-                });
     }
 }
