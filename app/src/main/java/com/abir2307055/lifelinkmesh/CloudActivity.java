@@ -13,6 +13,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.abir2307055.lifelinkmesh.cloud.CloudSync;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import android.content.Intent;
 
 
 // Cloud screen: Firebase Authentication (with email verification)
@@ -47,6 +48,7 @@ public class CloudActivity extends AppCompatActivity {
         Button btnSendVerify = findViewById(R.id.btnSendVerify);
         Button btnCheckVerified = findViewById(R.id.btnCheckVerified);
         Button btnUploadSos = findViewById(R.id.btnUploadSos);
+        Button btnOpenBoard = findViewById(R.id.btnOpenBoard);
 
         btnSignUp.setOnClickListener(v -> signUp());
         btnSignIn.setOnClickListener(v -> signIn());
@@ -58,6 +60,8 @@ public class CloudActivity extends AppCompatActivity {
         btnSendVerify.setOnClickListener(v -> sendVerification());
         btnCheckVerified.setOnClickListener(v -> checkVerified());
         btnUploadSos.setOnClickListener(v -> uploadSos());
+        btnOpenBoard.setOnClickListener(v ->
+                startActivity(new Intent(this, SosBoardActivity.class)));
 
         showUser();
     }

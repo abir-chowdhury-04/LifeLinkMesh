@@ -28,6 +28,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LifeLinkMesh">
         <activity
+            android:name=".SosBoardActivity"
+            android:exported="false" />
+        <activity
             android:name=".ContactsActivity"
             android:exported="false" />
         <activity

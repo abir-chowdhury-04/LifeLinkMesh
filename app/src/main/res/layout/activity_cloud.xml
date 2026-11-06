@@ -79,4 +79,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="Upload SOS alerts (Realtime DB)" />
+
+    <Button
+        android:id="@+id/btnOpenBoard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Open SOS board (live)" />
 </LinearLayout>
