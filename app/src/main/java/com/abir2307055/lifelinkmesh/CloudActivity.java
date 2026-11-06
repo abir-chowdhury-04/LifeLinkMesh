@@ -6,19 +6,40 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.abir2307055.lifelinkmesh.data.AppDatabase;
+import com.abir2307055.lifelinkmesh.data.SosAlert;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
-// Cloud screen: Firebase Authentication (email + password) with email verification.
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+// Cloud screen: Firebase Authentication (with email verification)
+// and SOS alerts in the Realtime Database.
 public class CloudActivity extends AppCompatActivity {
+
+    private static final String SOS_PATH = "sos";
 
     private FirebaseAuth auth;
     private TextView txtUser;
     private TextView txtStatus;
+    private TextView txtData;
     private EditText editEmail;
     private EditText editPassword;
+
+    // Room must not run on the main thread, so database reads go through this.
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +50,7 @@ public class CloudActivity extends AppCompatActivity {
 
         txtUser = findViewById(R.id.txtCloudUser);
         txtStatus = findViewById(R.id.txtCloudStatus);
+        txtData = findViewById(R.id.txtCloudData);
         editEmail = findViewById(R.id.editEmail);
         editPassword = findViewById(R.id.editPassword);
         Button btnSignUp = findViewById(R.id.btnSignUp);
@@ -36,6 +58,8 @@ public class CloudActivity extends AppCompatActivity {
         Button btnSignOut = findViewById(R.id.btnSignOut);
         Button btnSendVerify = findViewById(R.id.btnSendVerify);
         Button btnCheckVerified = findViewById(R.id.btnCheckVerified);
+        Button btnUploadSos = findViewById(R.id.btnUploadSos);
+        Button btnReadSos = findViewById(R.id.btnReadSos);
 
         btnSignUp.setOnClickListener(v -> signUp());
         btnSignIn.setOnClickListener(v -> signIn());
@@ -46,9 +70,19 @@ public class CloudActivity extends AppCompatActivity {
         });
         btnSendVerify.setOnClickListener(v -> sendVerification());
         btnCheckVerified.setOnClickListener(v -> checkVerified());
+        btnUploadSos.setOnClickListener(v -> uploadSos());
+        btnReadSos.setOnClickListener(v -> readSos());
 
         showUser();
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executor.shutdown();
+    }
+
+    // ---------------- Authentication ----------------
 
     private void signUp() {
         String email = editEmail.getText().toString().trim();
@@ -62,7 +96,6 @@ public class CloudActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         txtStatus.setText("Sign up OK. Sending verification email...");
-                        // A new account is signed in automatically, so we can send the link now.
                         sendVerification();
                     } else {
                         txtStatus.setText("Sign up failed: " + task.getException().getMessage());
@@ -90,7 +123,6 @@ public class CloudActivity extends AppCompatActivity {
                 });
     }
 
-    // Asks Firebase to email a verification link to the signed-in user.
     private void sendVerification() {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
@@ -107,7 +139,7 @@ public class CloudActivity extends AppCompatActivity {
         });
     }
 
-    // The phone caches the user, so reload() fetches the fresh verified flag from Firebase.
+    // The phone caches the user, so reload() fetches the fresh verified flag.
     private void checkVerified() {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
@@ -124,7 +156,6 @@ public class CloudActivity extends AppCompatActivity {
         });
     }
 
-    // Shows who is signed in and whether the email is verified.
     private void showUser() {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
@@ -134,5 +165,102 @@ public class CloudActivity extends AppCompatActivity {
         } else {
             txtUser.setText("Signed in: " + user.getEmail() + "\nEmail verified: NO");
         }
+    }
+
+    // ---------------- Realtime Database: SOS ----------------
+
+    // Step 1: check the user. Step 2: refresh the sign-in token (it carries the
+    // "email verified" flag the rules check). Step 3: read Room. Step 4: write to the cloud.
+    private void uploadSos() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) {
+            txtStatus.setText("Sign in first");
+            return;
+        }
+        if (!user.isEmailVerified()) {
+            txtStatus.setText("Verify your email first (then tap refresh)");
+            return;
+        }
+        txtStatus.setText("Uploading...");
+        user.getIdToken(true).addOnCompleteListener(this, tokenTask -> {
+            if (!tokenTask.isSuccessful()) {
+                txtStatus.setText("Token refresh failed: " + tokenTask.getException().getMessage());
+                return;
+            }
+            executor.execute(() -> {
+                List<SosAlert> alerts = AppDatabase.getInstance(getApplicationContext())
+                        .sosDao().getAll();
+                runOnUiThread(() -> pushSos(user, alerts));
+            });
+        });
+    }
+
+    private void pushSos(FirebaseUser user, List<SosAlert> alerts) {
+        if (alerts.isEmpty()) {
+            txtStatus.setText("No SOS alerts on this phone yet");
+            return;
+        }
+        // One update: path "<alert id>" -> alert data. Re-uploading the same id overwrites it,
+        // so uploading twice never creates duplicates.
+        Map<String, Object> updates = new HashMap<>();
+        for (SosAlert a : alerts) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("senderName", a.senderName);
+            item.put("category", a.category);
+            item.put("note", a.note);
+            item.put("timestamp", a.timestamp);
+            item.put("hasLocation", a.hasLocation);
+            item.put("latitude", a.latitude);
+            item.put("longitude", a.longitude);
+            item.put("accuracy", (double) a.accuracy);
+            item.put("uploadedBy", user.getUid());
+            updates.put(a.id, item);
+        }
+        final int count = alerts.size();
+        FirebaseDatabase.getInstance().getReference(SOS_PATH)
+                .updateChildren(updates)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        txtStatus.setText("Uploaded " + count + " SOS alert(s)");
+                    } else {
+                        txtStatus.setText("Upload failed: " + task.getException().getMessage());
+                    }
+                });
+    }
+
+    private void readSos() {
+        if (auth.getCurrentUser() == null) {
+            // Still try, to show that the rules deny a signed-out user.
+            txtStatus.setText("Reading while signed out (rules should deny this)...");
+        } else {
+            txtStatus.setText("Reading...");
+        }
+        FirebaseDatabase.getInstance().getReference(SOS_PATH)
+                .orderByChild("timestamp")
+                .limitToLast(10)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        List<String> lines = new ArrayList<>();
+                        for (DataSnapshot child : snapshot.getChildren()) {
+                            String category = child.child("category").getValue(String.class);
+                            String sender = child.child("senderName").getValue(String.class);
+                            String note = child.child("note").getValue(String.class);
+                            lines.add(category + " from " + sender + ": " + note);
+                        }
+                        // The query returns oldest first, so show the newest at the top.
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = lines.size() - 1; i >= 0; i--) {
+                            sb.append(lines.get(i)).append("\n\n");
+                        }
+                        txtData.setText(sb.length() == 0 ? "(nothing in the cloud yet)" : sb.toString());
+                        txtStatus.setText("Read " + lines.size() + " SOS alert(s) from the cloud");
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        txtStatus.setText("Read failed: " + error.getMessage());
+                    }
+                });
     }
 }
