@@ -54,6 +54,18 @@
         android:layout_height="wrap_content"
         android:text="Sign out" />
 
+    <Button
+        android:id="@+id/btnSendVerify"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Send verification email" />
+
+    <Button
+        android:id="@+id/btnCheckVerified"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="I clicked the link: refresh" />
+
     <TextView
         android:id="@+id/txtCloudStatus"
         android:layout_width="match_parent"

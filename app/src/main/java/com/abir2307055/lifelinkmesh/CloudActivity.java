@@ -11,7 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
-// Cloud screen: Firebase Authentication (email + password).
+// Cloud screen: Firebase Authentication (email + password) with email verification.
 public class CloudActivity extends AppCompatActivity {
 
     private FirebaseAuth auth;
@@ -34,6 +34,8 @@ public class CloudActivity extends AppCompatActivity {
         Button btnSignUp = findViewById(R.id.btnSignUp);
         Button btnSignIn = findViewById(R.id.btnSignIn);
         Button btnSignOut = findViewById(R.id.btnSignOut);
+        Button btnSendVerify = findViewById(R.id.btnSendVerify);
+        Button btnCheckVerified = findViewById(R.id.btnCheckVerified);
 
         btnSignUp.setOnClickListener(v -> signUp());
         btnSignIn.setOnClickListener(v -> signIn());
@@ -42,6 +44,8 @@ public class CloudActivity extends AppCompatActivity {
             txtStatus.setText("Signed out");
             showUser();
         });
+        btnSendVerify.setOnClickListener(v -> sendVerification());
+        btnCheckVerified.setOnClickListener(v -> checkVerified());
 
         showUser();
     }
@@ -57,7 +61,9 @@ public class CloudActivity extends AppCompatActivity {
         auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        txtStatus.setText("Sign up OK");
+                        txtStatus.setText("Sign up OK. Sending verification email...");
+                        // A new account is signed in automatically, so we can send the link now.
+                        sendVerification();
                     } else {
                         txtStatus.setText("Sign up failed: " + task.getException().getMessage());
                     }
@@ -84,13 +90,49 @@ public class CloudActivity extends AppCompatActivity {
                 });
     }
 
-    // Shows who is signed in right now (null means nobody).
+    // Asks Firebase to email a verification link to the signed-in user.
+    private void sendVerification() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) {
+            txtStatus.setText("Sign in first");
+            return;
+        }
+        user.sendEmailVerification().addOnCompleteListener(this, task -> {
+            if (task.isSuccessful()) {
+                txtStatus.setText("Verification email sent to " + user.getEmail()
+                        + ". Open it (check spam too), click the link, then tap refresh.");
+            } else {
+                txtStatus.setText("Could not send: " + task.getException().getMessage());
+            }
+        });
+    }
+
+    // The phone caches the user, so reload() fetches the fresh verified flag from Firebase.
+    private void checkVerified() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) {
+            txtStatus.setText("Sign in first");
+            return;
+        }
+        user.reload().addOnCompleteListener(this, task -> {
+            if (task.isSuccessful()) {
+                txtStatus.setText("Refreshed");
+            } else {
+                txtStatus.setText("Refresh failed: " + task.getException().getMessage());
+            }
+            showUser();
+        });
+    }
+
+    // Shows who is signed in and whether the email is verified.
     private void showUser() {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) {
             txtUser.setText("Not signed in");
+        } else if (user.isEmailVerified()) {
+            txtUser.setText("Signed in: " + user.getEmail() + "\nEmail verified: YES");
         } else {
-            txtUser.setText("Signed in: " + user.getEmail());
+            txtUser.setText("Signed in: " + user.getEmail() + "\nEmail verified: NO");
         }
     }
 }
