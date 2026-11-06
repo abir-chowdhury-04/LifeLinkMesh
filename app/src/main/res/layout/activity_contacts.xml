@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="People to notify when you send an SOS (email addresses)"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/editContact1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="Contact 1 email"
+        android:inputType="textEmailAddress" />
+
+    <EditText
+        android:id="@+id/editContact2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Contact 2 email (optional)"
+        android:inputType="textEmailAddress" />
+
+    <Button
+        android:id="@+id/btnSaveContacts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save" />
+
+    <Button
+        android:id="@+id/btnRestoreContacts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Restore from cloud" />
+
+    <TextView
+        android:id="@+id/txtContactsStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="" />
+</LinearLayout>

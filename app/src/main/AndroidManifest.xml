@@ -27,6 +27,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LifeLinkMesh">
         <activity
+            android:name=".ContactsActivity"
+            android:exported="false" />
+        <activity
             android:name=".CloudActivity"
             android:exported="false" />
         <activity

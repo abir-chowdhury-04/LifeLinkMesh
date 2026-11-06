@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+
 // Cloud screen: Firebase Authentication (with email verification)
 // and SOS alerts in the Realtime Database.
 public class CloudActivity extends AppCompatActivity {
