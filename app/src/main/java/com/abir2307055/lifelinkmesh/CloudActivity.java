@@ -17,7 +17,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-
+import com.abir2307055.lifelinkmesh.cloud.CloudSync;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -170,63 +170,10 @@ public class CloudActivity extends AppCompatActivity {
 
     // ---------------- Realtime Database: SOS ----------------
 
-    // Step 1: check the user. Step 2: refresh the sign-in token (it carries the
-    // "email verified" flag the rules check). Step 3: read Room. Step 4: write to the cloud.
+    // Manual "upload now" uses the same code as the automatic timer.
     private void uploadSos() {
-        FirebaseUser user = auth.getCurrentUser();
-        if (user == null) {
-            txtStatus.setText("Sign in first");
-            return;
-        }
-        if (!user.isEmailVerified()) {
-            txtStatus.setText("Verify your email first (then tap refresh)");
-            return;
-        }
         txtStatus.setText("Uploading...");
-        user.getIdToken(true).addOnCompleteListener(this, tokenTask -> {
-            if (!tokenTask.isSuccessful()) {
-                txtStatus.setText("Token refresh failed: " + tokenTask.getException().getMessage());
-                return;
-            }
-            executor.execute(() -> {
-                List<SosAlert> alerts = AppDatabase.getInstance(getApplicationContext())
-                        .sosDao().getAll();
-                runOnUiThread(() -> pushSos(user, alerts));
-            });
-        });
-    }
-
-    private void pushSos(FirebaseUser user, List<SosAlert> alerts) {
-        if (alerts.isEmpty()) {
-            txtStatus.setText("No SOS alerts on this phone yet");
-            return;
-        }
-        // One update: path "<alert id>" -> alert data. Re-uploading the same id overwrites it,
-        // so uploading twice never creates duplicates.
-        Map<String, Object> updates = new HashMap<>();
-        for (SosAlert a : alerts) {
-            Map<String, Object> item = new HashMap<>();
-            item.put("senderName", a.senderName);
-            item.put("category", a.category);
-            item.put("note", a.note);
-            item.put("timestamp", a.timestamp);
-            item.put("hasLocation", a.hasLocation);
-            item.put("latitude", a.latitude);
-            item.put("longitude", a.longitude);
-            item.put("accuracy", (double) a.accuracy);
-            item.put("uploadedBy", user.getUid());
-            updates.put(a.id, item);
-        }
-        final int count = alerts.size();
-        FirebaseDatabase.getInstance().getReference(SOS_PATH)
-                .updateChildren(updates)
-                .addOnCompleteListener(this, task -> {
-                    if (task.isSuccessful()) {
-                        txtStatus.setText("Uploaded " + count + " SOS alert(s)");
-                    } else {
-                        txtStatus.setText("Upload failed: " + task.getException().getMessage());
-                    }
-                });
+        CloudSync.syncNow(this, message -> runOnUiThread(() -> txtStatus.setText(message)));
     }
 
     private void readSos() {

@@ -15,6 +15,11 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
 import androidx.core.content.ContextCompat;
 
+import android.os.Handler;
+import android.os.Looper;
+
+import com.abir2307055.lifelinkmesh.cloud.CloudSync;
+
 import com.abir2307055.lifelinkmesh.MainActivity;
 
 // Keeps the mesh alive in the background. Android requires a visible notification
@@ -25,6 +30,16 @@ public class MeshService extends Service {
     private static final int NOTIFICATION_ID = 1;
 
     private BatteryReceiver batteryReceiver;
+
+    // Every 20 seconds: if there is internet and a verified user, upload new SOS alerts.
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable syncTick = new Runnable() {
+        @Override
+        public void run() {
+            CloudSync.syncNow(MeshService.this, null);
+            handler.postDelayed(this, 20000);
+        }
+    };
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -46,6 +61,9 @@ public class MeshService extends Service {
                     ContextCompat.RECEIVER_EXPORTED);
         }
 
+        handler.removeCallbacks(syncTick);       // onStartCommand can run more than once
+        handler.postDelayed(syncTick, 5000);
+
         MeshHub.getInstance(this).start();
         // If Android kills the service, ask it to restart it.
         return START_STICKY;
@@ -54,6 +72,7 @@ public class MeshService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        handler.removeCallbacks(syncTick);
         if (batteryReceiver != null) {
             unregisterReceiver(batteryReceiver);   // always unregister, or it leaks
             batteryReceiver = null;
