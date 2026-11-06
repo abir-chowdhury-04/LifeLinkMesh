@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "79270970308",
+    "firebase_url": "https://lifelinkmesh-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "lifelinkmesh",
+    "storage_bucket": "lifelinkmesh.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:79270970308:android:5e4b881feeaba3c9d19a91",
+        "android_client_info": {
+          "package_name": "com.abir2307055.lifelinkmesh"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxyiSEhxeiARSdaTbMBcxayb1sR65li9k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

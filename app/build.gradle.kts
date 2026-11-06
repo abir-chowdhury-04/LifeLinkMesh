@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -44,4 +45,10 @@ dependencies {
     implementation(libs.recyclerview)
     implementation(libs.room.runtime)
     annotationProcessor(libs.room.compiler)
+
+    // Firebase: the BoM picks compatible versions for the three libraries below
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.firestore)
 }
