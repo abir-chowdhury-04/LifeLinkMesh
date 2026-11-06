@@ -140,6 +140,12 @@
                 android:text="Files"
                 android:textAllCaps="false"
                 android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnCloud"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Cloud (Firebase)" />
         </LinearLayout>
 
         <androidx.appcompat.widget.SwitchCompat

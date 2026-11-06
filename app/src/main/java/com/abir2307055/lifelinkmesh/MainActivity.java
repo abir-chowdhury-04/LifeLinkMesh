@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnGraph = findViewById(R.id.btnGraph);
         Button btnLog = findViewById(R.id.btnLog);
         Button btnFiles = findViewById(R.id.btnFiles);
+        Button btnCloud = findViewById(R.id.btnCloud);
         RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
@@ -112,6 +113,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
         btnFiles.setOnClickListener(v ->
                 startActivity(new Intent(this, FileActivity.class)));
+
+        btnCloud.setOnClickListener(v ->
+                startActivity(new Intent(this, CloudActivity.class)));
 
         switchEmergency = findViewById(R.id.switchEmergency);
         switchEmergency.setOnCheckedChangeListener((button, checked) -> {
