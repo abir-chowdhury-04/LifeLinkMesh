@@ -1,88 +1,196 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
-
-    <TextView
-        android:id="@+id/txtCloudUser"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Not signed in"
-        android:textSize="18sp" />
-
-    <EditText
-        android:id="@+id/editEmail"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:hint="Email"
-        android:inputType="textEmailAddress" />
-
-    <EditText
-        android:id="@+id/editPassword"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Password (at least 6 characters)"
-        android:inputType="textPassword" />
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:baselineAligned="false"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cloud"
+            android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Optional. The mesh works without internet. Sign in to share SOS alerts online when a phone is connected."
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <!-- Account -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/txtCloudUser"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Not signed in"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <EditText
+                    android:id="@+id/editEmail"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:hint="Email"
+                    android:inputType="textEmailAddress"
+                    android:minHeight="48dp" />
+
+                <EditText
+                    android:id="@+id/editPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Password (at least 6 characters)"
+                    android:inputType="textPassword"
+                    android:minHeight="48dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnSignIn"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:minHeight="52dp"
+                        android:text="Sign in"
+                        android:textAllCaps="false" />
+
+                    <Button
+                        android:id="@+id/btnSignUp"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:minHeight="52dp"
+                        android:text="Sign up"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnSignOut"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:text="Sign out"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Verification -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Verify your email"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="The cloud only accepts verified accounts. Send the email, open the link in it, then refresh here."
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnSendVerify"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="1"
+                android:minHeight="56dp"
+                android:text="Send verification email"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/btnCheckVerified"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:minHeight="56dp"
+                android:text="I clicked the link: refresh"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txtCloudStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text=""
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <!-- Cloud actions -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="SOS alerts"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
         <Button
-            android:id="@+id/btnSignUp"
-            android:layout_width="0dp"
+            android:id="@+id/btnOpenBoard"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Sign up" />
+            android:layout_marginTop="4dp"
+            android:minHeight="56dp"
+            android:text="Open live SOS board"
+            android:textAllCaps="false" />
 
         <Button
-            android:id="@+id/btnSignIn"
-            android:layout_width="0dp"
+            android:id="@+id/btnUploadSos"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Sign in" />
+            android:minHeight="56dp"
+            android:text="Sync now"
+            android:textAllCaps="false" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Alerts upload automatically about every 20 seconds while the mesh is running and you are signed in with a verified email. Use Sync now if the mesh is stopped."
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
-
-    <Button
-        android:id="@+id/btnSignOut"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Sign out" />
-
-    <Button
-        android:id="@+id/btnSendVerify"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Send verification email" />
-
-    <Button
-        android:id="@+id/btnCheckVerified"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="I clicked the link: refresh" />
-
-    <TextView
-        android:id="@+id/txtCloudStatus"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="" />
-
-    <Button
-        android:id="@+id/btnUploadSos"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Upload SOS alerts (Realtime DB)" />
-
-    <Button
-        android:id="@+id/btnOpenBoard"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Open SOS board (live)" />
-</LinearLayout>
+</ScrollView>
