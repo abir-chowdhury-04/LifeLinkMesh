@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -11,29 +12,89 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <TextView
-            android:id="@+id/txtDevice"
-            android:layout_width="wrap_content"
+        <!-- Header card: app name, live status, who am I -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="18sp" />
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp">
 
-        <TextView
-            android:id="@+id/txtStatus"
-            android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="LifeLink Mesh"
+                    android:textAppearance="?attr/textAppearanceHeadlineMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <!-- Live status line: set from MainActivity -->
+                <TextView
+                    android:id="@+id/txtStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+
+                <!-- Name, tap to change -->
+                <TextView
+                    android:id="@+id/txtDevice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:minHeight="48dp"
+                    android:gravity="center_vertical"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Permission card: only visible when something is missing -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardPermissions"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="12sp" />
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp">
 
-        <Button
-            android:id="@+id/btnGrant"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Grant permissions" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <!-- Row 1: mesh controls -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="One step first: LifeLink needs a few permissions to find nearby phones and keep running."
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="15sp" />
+
+                <Button
+                    android:id="@+id/btnGrant"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:minHeight="52dp"
+                    android:text="Allow permissions"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Start (main action) and Stop -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:baselineAligned="false"
             android:orientation="horizontal">
 
@@ -41,108 +102,79 @@
                 android:id="@+id/btnStart"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:maxLines="1"
+                android:layout_marginEnd="4dp"
+                android:layout_weight="2"
+                android:minHeight="60dp"
                 android:text="Start mesh"
                 android:textAllCaps="false"
-                android:textSize="13sp" />
+                android:textSize="18sp" />
 
             <Button
                 android:id="@+id/btnStop"
+                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:layout_weight="1"
-                android:maxLines="1"
-                android:text="Stop mesh"
+                android:minHeight="60dp"
+                android:text="Stop"
                 android:textAllCaps="false"
-                android:textSize="13sp" />
+                android:textSize="16sp" />
         </LinearLayout>
 
-        <!-- Row 2 -->
+        <!-- SOS: the only red element on the screen -->
+        <Button
+            android:id="@+id/btnSos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:minHeight="72dp"
+            android:text="SOS: ask for help"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnError"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            app:backgroundTint="?attr/colorError" />
+
+        <!-- Tools -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Tools"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/btnRefresh"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:maxLines="1"
-                android:text="Refresh"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/btnGraph"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:maxLines="1"
-                android:text="Network graph"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <!-- Row 3 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:baselineAligned="false"
             android:orientation="horizontal">
 
             <Button
                 android:id="@+id/btnOpenChat"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
                 android:layout_weight="1"
-                android:maxLines="1"
-                android:text="Open chat"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/btnSos"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:maxLines="1"
-                android:text="SOS"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
-        </LinearLayout>
-
-        <!-- Row 4 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/btnLog"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:maxLines="1"
-                android:text="Message log"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
+                android:minHeight="56dp"
+                android:text="Chat"
+                android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/btnFiles"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:layout_weight="1"
-                android:maxLines="1"
+                android:minHeight="56dp"
                 android:text="Files"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
+                android:textAllCaps="false" />
         </LinearLayout>
 
-        <!-- Row 5 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -151,49 +183,156 @@
 
             <Button
                 android:id="@+id/btnCloud"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
                 android:layout_weight="1"
-                android:maxLines="1"
-                android:text="Cloud (Firebase)"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
+                android:minHeight="56dp"
+                android:text="Cloud"
+                android:textAllCaps="false" />
 
             <Button
                 android:id="@+id/btnContacts"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:minHeight="56dp"
+                android:text="Contacts"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <!-- Nearby phones: title row with Refresh beside it -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:maxLines="1"
-                android:text="Emergency contacts"
-                android:textAllCaps="false"
-                android:textSize="13sp" />
+                android:text="Nearby phones"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <Button
+                android:id="@+id/btnRefresh"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Refresh"
+                android:textAllCaps="false" />
         </LinearLayout>
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switchEmergency"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Emergency mode: OFF" />
-
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switchSaver"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Battery saver (test switch)" />
-
+        <!-- Shown only when the list is empty -->
         <TextView
-            android:id="@+id/txtLog"
+            android:id="@+id/txtEmpty"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textSize="12sp" />
+            android:padding="8dp"
+            android:text="No phones nearby yet. Tap Start mesh and keep the phones close together."
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
 
+        <!-- Height follows the content, so there is no empty gap -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerPeers"
             android:layout_width="match_parent"
-            android:layout_height="320dp"
-            android:layout_marginTop="8dp" />
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false" />
+
+        <!-- Advanced / technical items, hidden at first -->
+        <Button
+            android:id="@+id/btnMore"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="More options"
+            android:textAllCaps="false" />
+
+        <LinearLayout
+            android:id="@+id/layoutMore"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnGraph"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:layout_weight="1"
+                    android:maxLines="1"
+                    android:minHeight="52dp"
+                    android:text="Network graph"
+                    android:textAllCaps="false" />
+
+                <Button
+                    android:id="@+id/btnLog"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
+                    android:maxLines="1"
+                    android:minHeight="52dp"
+                    android:text="Message log"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchEmergency"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:minHeight="48dp"
+                android:text="Emergency mode: OFF" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switchSaver"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="Battery saver (test switch)" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="About this phone"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <!-- Android version and permission list (debug info) -->
+            <TextView
+                android:id="@+id/txtAbout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/txtLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

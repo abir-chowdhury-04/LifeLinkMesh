@@ -3,38 +3,34 @@ package com.abir2307055.lifelinkmesh;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.text.TextUtils;
+import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.graphics.Color;
-import com.abir2307055.lifelinkmesh.cloud.ProfileSync;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.text.InputFilter;
-import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.Toast;
-
-import androidx.appcompat.app.AlertDialog;
-
+import com.abir2307055.lifelinkmesh.cloud.ProfileSync;
 import com.abir2307055.lifelinkmesh.data.ProfileStore;
-
 import com.abir2307055.lifelinkmesh.mesh.MeshHub;
+import com.abir2307055.lifelinkmesh.mesh.MeshService;
 import com.abir2307055.lifelinkmesh.model.Peer;
 import com.abir2307055.lifelinkmesh.nearby.NearbyManager;
 import com.abir2307055.lifelinkmesh.ui.PeerAdapter;
-import com.abir2307055.lifelinkmesh.mesh.MeshService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +40,10 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
     private TextView txtStatus;
     private TextView txtDevice;
     private TextView txtLog;
+    private TextView txtAbout;
+    private TextView txtEmpty;
+    private View cardPermissions;
+    private RecyclerView recyclerPeers;
     private PeerAdapter peerAdapter;
     private MeshHub hub;
     private final List<String> logLines = new ArrayList<>();
@@ -63,6 +63,9 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         txtDevice = findViewById(R.id.txtDevice);
         txtStatus = findViewById(R.id.txtStatus);
         txtLog = findViewById(R.id.txtLog);
+        txtAbout = findViewById(R.id.txtAbout);
+        txtEmpty = findViewById(R.id.txtEmpty);
+        cardPermissions = findViewById(R.id.cardPermissions);
         Button btnGrant = findViewById(R.id.btnGrant);
         Button btnStart = findViewById(R.id.btnStart);
         Button btnStop = findViewById(R.id.btnStop);
@@ -74,7 +77,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         Button btnFiles = findViewById(R.id.btnFiles);
         Button btnCloud = findViewById(R.id.btnCloud);
         Button btnContacts = findViewById(R.id.btnContacts);
-        RecyclerView recyclerPeers = findViewById(R.id.recyclerPeers);
+        recyclerPeers = findViewById(R.id.recyclerPeers);
 
         hub = MeshHub.getInstance(this);
         switchSaver = findViewById(R.id.switchSaver);
@@ -92,6 +95,14 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         peerAdapter.setOnPeerClickListener(this::onPeerClicked);
         recyclerPeers.setLayoutManager(new LinearLayoutManager(this));
         recyclerPeers.setAdapter(peerAdapter);
+        // Whenever the list changes, refresh the "empty" text and the status line.
+        // One observer here means we do not have to remember it at every call site.
+        peerAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
+            @Override public void onChanged() { updatePeerUi(); }
+            @Override public void onItemRangeInserted(int start, int count) { updatePeerUi(); }
+            @Override public void onItemRangeRemoved(int start, int count) { updatePeerUi(); }
+            @Override public void onItemRangeChanged(int start, int count) { updatePeerUi(); }
+        });
         // If this screen was recreated (e.g. rotation), restore the peers from the hub.
         peerAdapter.setPeers(hub.getPeers());
 
@@ -125,6 +136,15 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         btnFiles.setOnClickListener(v ->
                 startActivity(new Intent(this, FileActivity.class)));
 
+        // Technical items stay hidden until the user asks for them.
+        Button btnMore = findViewById(R.id.btnMore);
+        View layoutMore = findViewById(R.id.layoutMore);
+        btnMore.setOnClickListener(v -> {
+            boolean show = layoutMore.getVisibility() != View.VISIBLE;
+            layoutMore.setVisibility(show ? View.VISIBLE : View.GONE);
+            btnMore.setText(show ? "Fewer options" : "More options");
+        });
+
         btnCloud.setOnClickListener(v ->
                 startActivity(new Intent(this, CloudActivity.class)));
 
@@ -144,8 +164,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
     private void showDevice() {
         String chosen = ProfileStore.loadName(this);
-        String text = "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")\n"
-                + "Name: " + hub.getLocalName() + "  (tap to change)";
+        String text = "Your name: " + hub.getLocalName() + "  (tap to change)";
         // The running name only changes when the mesh starts, so tell the user.
         if (!hub.getLocalName().startsWith(chosen + " #")) {
             text += "\nNew name \"" + chosen + "\" is used the next time you start the mesh";
@@ -208,7 +227,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
 
     private void startMesh() {
         if (!allPermissionsGranted()) {
-            appendLog("Grant permissions first");
+            Toast.makeText(this, "Please allow the permissions first", Toast.LENGTH_SHORT).show();
             return;
         }
         ContextCompat.startForegroundService(this, new Intent(this, MeshService.class));
@@ -295,7 +314,7 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         txtLog.setText(TextUtils.join("\n", logLines));
     }
 
-    // ---- permissions (unchanged) ----
+    // ---- permissions (logic unchanged) ----
 
     private String[] getRequiredPermissions() {
         List<String> list = new ArrayList<>();
@@ -323,8 +342,11 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
         return true;
     }
 
+    // Permission card + the "About this phone" debug text + the status line.
     private void updateStatus() {
         StringBuilder sb = new StringBuilder();
+        sb.append("Android ").append(Build.VERSION.RELEASE)
+                .append(" (API ").append(Build.VERSION.SDK_INT).append(")\n");
         for (String p : getRequiredPermissions()) {
             boolean granted = ContextCompat.checkSelfPermission(this, p)
                     == PackageManager.PERMISSION_GRANTED;
@@ -333,6 +355,32 @@ public class MainActivity extends AppCompatActivity implements NearbyManager.Lis
                     .append(granted ? "granted" : "DENIED")
                     .append("\n");
         }
-        txtStatus.setText(sb.toString());
+        txtAbout.setText(sb.toString());
+        cardPermissions.setVisibility(allPermissionsGranted() ? View.GONE : View.VISIBLE);
+        updatePeerUi();
+    }
+
+    // The status line and the empty-list text, based on what the hub knows.
+    private void updatePeerUi() {
+        List<Peer> peers = hub.getPeers();
+        int connected = 0;
+        for (Peer p : peers) {
+            if (Peer.STATUS_CONNECTED.equals(p.getStatus())) {
+                connected++;
+            }
+        }
+        String status;
+        if (!allPermissionsGranted()) {
+            status = "Allow permissions to begin";
+        } else if (connected > 0) {
+            status = "Connected to " + connected + (connected == 1 ? " phone" : " phones");
+        } else if (!peers.isEmpty()) {
+            status = peers.size() + (peers.size() == 1 ? " phone" : " phones")
+                    + " found. Tap one to connect";
+        } else {
+            status = "Ready. Tap Start mesh";
+        }
+        txtStatus.setText(status);
+        txtEmpty.setVisibility(peerAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 }
