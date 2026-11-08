@@ -45,7 +45,7 @@ public class SosNotifier {
         String where = alert.hasLocation ? "with location" : "no location";
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("SOS: " + alert.category + " · " + alert.senderName)
                 .setContentText(note + " (" + where + ")")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

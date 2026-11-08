@@ -14,6 +14,7 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import com.abir2307055.lifelinkmesh.FileActivity;
+import com.abir2307055.lifelinkmesh.R;
 import com.abir2307055.lifelinkmesh.model.FileOffer;
 
 // Shows a notification when another phone offers me a file.
@@ -39,7 +40,7 @@ public class FileNotifier {
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("File offer from " + offer.senderName)
                 .setContentText(offer.name + " (" + offer.sizeText() + ")")
                 .setAutoCancel(true)

@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.abir2307055.lifelinkmesh.R;
 import com.abir2307055.lifelinkmesh.cloud.CloudSync;
 
 import com.abir2307055.lifelinkmesh.MainActivity;
@@ -102,7 +103,7 @@ public class MeshService extends Service {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("LifeLink Mesh is running")
                 .setContentText("Looking for nearby phones")
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(pending)
                 .setOngoing(true)
                 .build();
