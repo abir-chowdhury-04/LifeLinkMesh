@@ -4,16 +4,23 @@ import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.abir2307055.lifelinkmesh.data.SosAlert;
 import com.abir2307055.lifelinkmesh.ui.SosAdapter;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -22,13 +29,13 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
-import androidx.appcompat.app.AlertDialog;
-
-import java.util.HashMap;
-import java.util.Map;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 // Live board of every SOS alert in the cloud. The listener is attached only while this
 // screen is visible, so it does not use data in the background.
@@ -38,6 +45,7 @@ public class SosBoardActivity extends AppCompatActivity {
     private TextView txtBoardStatus;
     private Query query;
     private ValueEventListener listener;   // null while not listening
+    private RequestQueue requestQueue;     // Volley: runs HTTP requests off the main thread
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +54,8 @@ public class SosBoardActivity extends AppCompatActivity {
 
         txtBoardStatus = findViewById(R.id.txtBoardStatus);
         RecyclerView recyclerBoard = findViewById(R.id.recyclerBoard);
+
+        requestQueue = Volley.newRequestQueue(getApplicationContext());
 
         adapter = new SosAdapter();
         adapter.setOnSosClickListener(this::showActions);
@@ -63,6 +73,7 @@ public class SosBoardActivity extends AppCompatActivity {
     protected void onStop() {
         super.onStop();
         stopListening();
+        requestQueue.cancelAll(this);   // drop any place lookup still waiting for a reply
     }
 
     private void startListening() {
@@ -151,19 +162,99 @@ public class SosBoardActivity extends AppCompatActivity {
                 false);
     }
 
-    // Tapping an alert offers two actions.
+    // Tapping an alert offers three actions.
     private void showActions(SosAlert alert) {
-        String[] choices = {"Open map", "Mark resolved"};
+        String[] choices = {"Where is this?", "Open map", "Mark resolved"};
         new AlertDialog.Builder(this)
                 .setTitle(alert.category + " SOS from " + alert.senderName)
                 .setItems(choices, (dialog, which) -> {
                     if (which == 0) {
+                        lookUpPlace(alert);
+                    } else if (which == 1) {
                         openMap(alert);
                     } else {
                         markResolved(alert);
                     }
                 })
                 .show();
+    }
+
+    // ---- External API: turns the alert's coordinates into a place name ----
+
+    private void lookUpPlace(SosAlert alert) {
+        if (!alert.hasLocation) {
+            Toast.makeText(this, "This SOS has no location", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Locale.US keeps the decimal point a dot, whatever the phone's language is.
+        String url = String.format(Locale.US,
+                "https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=en"
+                        + "&lat=%.6f&lon=%.6f", alert.latitude, alert.longitude);
+        Toast.makeText(this, "Looking up the place...", Toast.LENGTH_SHORT).show();
+
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+                response -> showPlace(alert, placeLabel(response), response.has("error")),
+                error -> showPlaceError(error)) {
+            // The service asks every app to identify itself in the User-Agent header.
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("User-Agent", "LifeLinkMesh/1.0 (university student project)");
+                return headers;
+            }
+        };
+        request.setTag(this);   // so onStop can cancel it
+        requestQueue.add(request);
+    }
+
+    // Short label from the address parts: village / suburb / town / city, county, district.
+    // We skip the road and "display_name" because road names can be long and in Bengali.
+    private String placeLabel(JSONObject response) {
+        JSONObject address = response.optJSONObject("address");
+        if (address != null) {
+            String[] keys = {"village", "suburb", "town", "city", "county", "state_district"};
+            List<String> parts = new ArrayList<>();
+            for (String key : keys) {
+                String value = address.optString(key, "");
+                if (!value.isEmpty() && !parts.contains(value) && parts.size() < 3) {
+                    parts.add(value);
+                }
+            }
+            if (!parts.isEmpty()) {
+                return TextUtils.join(", ", parts);
+            }
+        }
+        return response.optString("display_name", "");   // fallback, may be empty
+    }
+
+    private void showPlace(SosAlert alert, String label, boolean noData) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        String place = (noData || label.isEmpty())
+                ? "No place name found for this spot" : label;
+        String message = place
+                + "\n\nCoordinates: " + String.format(Locale.US, "%.5f, %.5f",
+                alert.latitude, alert.longitude)
+                + "\n\n© OpenStreetMap contributors";
+        new AlertDialog.Builder(this)
+                .setTitle("Where is this?")
+                .setMessage(message)
+                .setPositiveButton("OK", null)
+                .show();
+    }
+
+    private void showPlaceError(VolleyError error) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        String message;
+        if (error.networkResponse == null) {
+            message = "No internet, or the place service cannot be reached";
+        } else {
+            message = "Place service error (code " + error.networkResponse.statusCode + ")";
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 
     // Writes the status next to the alert. The live listener then removes it from every board.
